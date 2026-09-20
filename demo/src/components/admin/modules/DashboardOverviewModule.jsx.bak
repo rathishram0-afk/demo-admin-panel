@@ -1,0 +1,689 @@
+import React, { useState, useEffect } from 'react';
+import { sessionService } from '../../../services/sessionService';
+import { 
+  Wallet, 
+  Gamepad2, 
+  Users, 
+  Tv, 
+  Plus, 
+  Clock, 
+  Play, 
+  Pause, 
+  Square, 
+  TrendingUp, 
+  AlertTriangle,
+  Calendar,
+  Crown,
+  User,
+  Phone,
+  Tag
+} from 'lucide-react';
+
+export default function DashboardOverviewModule({ onNavigateTab }) {
+  const [stations, setStations] = useState([]);
+  const [controllerMetrics, setControllerMetrics] = useState({ totalControllers: 20, controllersInUse: 14, availableControllers: 6 });
+  const [selectedStationId, setSelectedStationId] = useState('PS5-1');
+
+  // Form State for Start Walk-in Session
+  const [walkInForm, setWalkInForm] = useState({
+    groupLeader: 'Arun Kumar',
+    mobile: '+91 86102 72573',
+    device: 'PlayStation 5',
+    consoleId: 'PS5-1',
+    numPlayers: 4,
+    duration: '2 Hours',
+    durationMinutes: 120,
+    notes: 'Regular Customers'
+  });
+
+  const loadData = async () => {
+    const stData = await sessionService.getStations();
+    setStations(stData);
+    const ctrlData = await sessionService.getControllerMetrics();
+    setControllerMetrics(ctrlData);
+  };
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTimer = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const selectedStation = stations.find(s => s.id === selectedStationId) || stations[0] || {};
+  const activeRunningSessions = stations.filter(s => s.status === 'ACTIVE');
+  const availableDevicesCount = stations.filter(s => s.status === 'AVAILABLE').length;
+
+  const handleStartWalkInSubmit = async (e) => {
+    e.preventDefault();
+    await sessionService.startWalkInSession({
+      stationId: walkInForm.consoleId,
+      customerName: walkInForm.groupLeader,
+      phone: walkInForm.mobile,
+      numPlayers: walkInForm.numPlayers,
+      durationMinutes: walkInForm.durationMinutes,
+      notes: walkInForm.notes,
+      paymentMethod: 'UPI',
+      price: walkInForm.numPlayers * 100
+    });
+    loadData();
+  };
+
+  const handleExtend = async (stId, mins = 30) => {
+    await sessionService.extendSession(stId, mins);
+    loadData();
+  };
+
+  const handleEnd = async (stId) => {
+    await sessionService.endSession(stId);
+    loadData();
+  };
+
+  const handlePause = async (stId) => {
+    await sessionService.togglePauseSession(stId);
+    loadData();
+  };
+
+  return (
+    <div className="space-y-4 lg:space-y-0 lg:h-full lg:flex lg:flex-col lg:justify-between text-gray-100 font-sans">
+      
+      {/* TOP ROW: 7 UPSCALED KPI STAT CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3 shrink-0">
+        
+        {/* Card 1: Today's Revenue */}
+        <div className="glass-panel p-3.5 sm:p-4 rounded-xl border border-white/10 relative overflow-hidden space-y-1.5 group hover:border-purple-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-cyber tracking-wider text-gray-400 uppercase font-bold">Today's Revenue</span>
+            <div className="w-7 h-7 rounded-lg bg-purple-950/60 border border-purple-500/40 flex items-center justify-center text-purple-400">
+              <Wallet className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-cyber font-black text-white">₹ 12,450</div>
+          <p className="text-[9px] font-mono text-emerald-400 flex items-center gap-0.5">
+            <TrendingUp className="w-2.5 h-2.5" /> +18.6% yesterday
+          </p>
+        </div>
+
+        {/* Card 2: Running Sessions */}
+        <div className="glass-panel p-3.5 sm:p-4 rounded-xl border border-white/10 relative overflow-hidden space-y-1.5 group hover:border-cyan-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-cyber tracking-wider text-gray-400 uppercase font-bold">Running Sessions</span>
+            <div className="w-7 h-7 rounded-lg bg-blue-950/60 border border-blue-500/40 flex items-center justify-center text-blue-400">
+              <Gamepad2 className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-cyber font-black text-white">{activeRunningSessions.length < 10 ? `0${activeRunningSessions.length}` : activeRunningSessions.length}</div>
+          <p className="text-[9px] font-mono text-cyan-400">Live Right Now</p>
+        </div>
+
+        {/* Card 3: Total Players */}
+        <div className="glass-panel p-3.5 sm:p-4 rounded-xl border border-white/10 relative overflow-hidden space-y-1.5 group hover:border-emerald-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-cyber tracking-wider text-gray-400 uppercase font-bold">Total Players</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+              <Users className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-cyber font-black text-white">18</div>
+          <p className="text-[9px] font-mono text-gray-400">Across sessions</p>
+        </div>
+
+        {/* Card 4: Controllers In Use */}
+        <div className="glass-panel p-3.5 sm:p-4 rounded-xl border border-white/10 relative overflow-hidden space-y-1.5 group hover:border-amber-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-cyber tracking-wider text-gray-400 uppercase font-bold">Controllers In Use</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <Gamepad2 className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-cyber font-black text-white">
+            {controllerMetrics.controllersInUse} / {controllerMetrics.totalControllers}
+          </div>
+          <p className="text-[9px] font-mono text-amber-400">Available: {controllerMetrics.availableControllers}</p>
+        </div>
+
+        {/* Card 5: Available Devices */}
+        <div className="glass-panel p-3.5 sm:p-4 rounded-xl border border-white/10 relative overflow-hidden space-y-1.5 group hover:border-pink-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-cyber tracking-wider text-gray-400 uppercase font-bold">Available Devices</span>
+            <div className="w-7 h-7 rounded-lg bg-pink-950/60 border border-pink-500/40 flex items-center justify-center text-pink-400">
+              <Tv className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-cyber font-black text-white">{availableDevicesCount < 10 ? `0${availableDevicesCount}` : availableDevicesCount}</div>
+          <p className="text-[9px] font-mono text-emerald-400">Ready to Play</p>
+        </div>
+
+        {/* Card 6: Online Bookings */}
+        <div className="glass-panel p-3.5 sm:p-4 rounded-xl border border-white/10 relative overflow-hidden space-y-1.5 group hover:border-cyan-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-cyber tracking-wider text-gray-400 uppercase font-bold">Online Bookings</span>
+            <div className="w-7 h-7 rounded-lg bg-cyan-950/60 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-cyber font-black text-white">12</div>
+          <p className="text-[9px] font-mono text-cyan-300">3 Pending Action</p>
+        </div>
+
+        {/* Card 7: Membership Requests */}
+        <div className="glass-panel p-3.5 sm:p-4 rounded-xl border border-white/10 relative overflow-hidden space-y-1.5 group hover:border-amber-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-cyber tracking-wider text-gray-400 uppercase font-bold">VIP Members</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <Crown className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-cyber font-black text-white">05</div>
+          <p className="text-[9px] font-mono text-amber-400">New VIP Requests</p>
+        </div>
+
+      </div>
+
+      {/* MIDDLE SECTION: DEVICE GRID & RUNNING SESSIONS */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 lg:basis-[56%] lg:min-h-0 lg:overflow-hidden my-2">
+        
+        {/* Left: Device / Console Status Grid (Strictly 9 Devices with Local Admin Images) */}
+        <div className="lg:col-span-8 glass-panel p-3.5 sm:p-4 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden">
+          
+          {/* Header & Status Legend */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5 shrink-0">
+            <h3 className="font-cyber text-sm sm:text-base font-extrabold text-white uppercase tracking-wider">
+              Device / Console Status (9 Devices)
+            </h3>
+            
+            <div className="flex items-center gap-3 text-[11px] font-cyber">
+              <span className="flex items-center gap-1 text-emerald-400"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Available</span>
+              <span className="flex items-center gap-1 text-cyan-400"><span className="w-2 h-2 rounded-full bg-cyan-500" /> Running</span>
+              <span className="flex items-center gap-1 text-amber-400"><span className="w-2 h-2 rounded-full bg-amber-500" /> Reserved</span>
+              <span className="flex items-center gap-1 text-red-400"><span className="w-2 h-2 rounded-full bg-red-500" /> Maintenance</span>
+            </div>
+          </div>
+
+          {/* Console Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden pt-2">
+            {stations.map((st) => {
+              const isSelected = selectedStationId === st.id;
+              const isRunning = st.status === 'ACTIVE';
+              const isReserved = st.status === 'RESERVED';
+              const isEndingSoon = st.isEndingSoon;
+
+              return (
+                <div
+                  key={st.id}
+                  onClick={() => setSelectedStationId(st.id)}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between space-y-2 ${
+                    isSelected ? 'ring-2 ring-purple-500 border-purple-400 bg-purple-950/30' : 'bg-slate-950/60 border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-cyber text-xs sm:text-sm font-bold text-white">{st.name}</span>
+                    <span className={`px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-cyber font-bold uppercase ${
+                      isEndingSoon
+                        ? 'bg-amber-500 text-slate-950 animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                        : isRunning
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                        : isReserved
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                        : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    }`}>
+                      {isEndingSoon ? 'Ending Soon' : isRunning ? 'Running' : isReserved ? 'Reserved' : 'Available'}
+                    </span>
+                  </div>
+
+                  {/* LEFT SIDE PRODUCT RENDER IMAGE (~70-80px WIDE, OBJECT-CONTAIN, TRANSPARENT BG) */}
+                  <div className="flex items-center gap-2.5 py-0.5">
+                    <div className="w-16 sm:w-20 h-14 shrink-0 flex items-center justify-center">
+                      <img 
+                        src={st.image} 
+                        alt={st.name} 
+                        className="max-w-[75px] max-h-14 object-contain filter drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]" 
+                      />
+                    </div>
+
+                    <div className="flex-1 space-y-1 text-[11px] font-mono">
+                      <div className="flex justify-between text-gray-400">
+                        <span>Players</span>
+                        <span className="text-white font-bold">{st.playersCount || 0} / {st.controllersTotal || 4}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-gray-400">
+                        <span>Controllers</span>
+                        <div className="flex items-center gap-0.5 text-[10px]">
+                          {[...Array(st.controllersTotal || 4)].map((_, i) => (
+                            <span key={i} className={i < (st.controllersUsed || 0) ? 'text-emerald-400 filter drop-shadow-[0_0_4px_rgba(16,185,129,0.5)]' : 'text-gray-600'}>🎮</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Elapsed Timer or Status */}
+                  <div className="pt-1.5 border-t border-white/10 text-center">
+                    {isRunning ? (
+                      <span className={`font-mono text-xs sm:text-sm font-black ${isEndingSoon ? 'text-amber-400 animate-pulse' : 'text-cyan-400'}`}>
+                        {formatTimer(st.elapsedSeconds || 0)}
+                      </span>
+                    ) : isReserved ? (
+                      <span className="font-mono text-[10px] sm:text-xs text-amber-400">{st.notes || 'Reserved'}</span>
+                    ) : (
+                      <span className="font-mono text-[10px] sm:text-xs text-emerald-400 font-bold">Ready to Play</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* + Add New Device Card */}
+            <div 
+              onClick={() => onNavigateTab && onNavigateTab('SETTINGS')}
+              className="p-3 rounded-xl border border-dashed border-purple-500/40 hover:border-purple-400 bg-purple-950/10 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all min-h-[120px]"
+            >
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500 flex items-center justify-center text-purple-400">
+                <Plus className="w-4 h-4" />
+              </div>
+              <span className="font-cyber text-[10px] font-bold text-purple-300 uppercase">Add New Device</span>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Right: Running Sessions Panel */}
+        <div className="lg:col-span-4 glass-panel p-3.5 sm:p-4 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
+            <h3 className="font-cyber text-sm sm:text-base font-extrabold text-white uppercase tracking-wider">
+              Running Sessions
+            </h3>
+            <button 
+              onClick={() => onNavigateTab && onNavigateTab('SESSIONS')}
+              className="text-xs font-cyber text-purple-400 hover:underline font-bold"
+            >
+              View All →
+            </button>
+          </div>
+
+          <div className="space-y-2.5 overflow-y-auto flex-1 min-h-0 pt-2 pr-1">
+            {activeRunningSessions.map((st) => (
+              <div key={st.id} className="p-3 rounded-xl bg-slate-950/80 border border-white/10 flex items-center justify-between gap-3 hover:border-purple-500/40 transition-all">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-12 h-12 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center p-1 shrink-0">
+                    <img src={st.image} alt={st.name} className="max-w-[45px] max-h-10 object-contain" />
+                  </div>
+                  <div className="flex flex-col text-xs">
+                    <span className="font-cyber font-bold text-white">{st.name}</span>
+                    <span className="text-[11px] text-gray-400">Leader: <strong className="text-gray-200">{st.customerName}</strong></span>
+                    <span className="text-[10px] text-gray-400">Players: {st.playersCount}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-mono text-xs sm:text-sm font-bold text-cyan-400">{formatTimer(st.elapsedSeconds || 0)}</span>
+                  <span className="text-[11px] font-mono text-purple-300 font-bold">Amount: ₹ {st.price}</span>
+                  
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <button
+                      onClick={() => handleExtend(st.id, 30)}
+                      className="px-2 py-0.5 rounded-lg bg-slate-900 border border-white/15 hover:border-purple-400 text-[10px] font-cyber text-gray-300 cursor-pointer"
+                    >
+                      Extend
+                    </button>
+                    <button
+                      onClick={() => handleEnd(st.id)}
+                      className="px-2 py-0.5 rounded-lg bg-red-950/80 border border-red-500/50 hover:bg-red-900 text-[10px] font-cyber text-red-300 cursor-pointer"
+                    >
+                      End
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+
+      {/* BOTTOM OPERATIONS DECK (4 COLUMNS - ONE SCREEN FIT) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 lg:basis-[42%] lg:min-h-0 lg:overflow-hidden">
+        
+        {/* Column 1: Start Walk-in Session Form */}
+        <div className="lg:col-span-3 glass-panel p-3.5 sm:p-4 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden">
+          <h3 className="font-cyber text-[14px] font-bold text-white tracking-wider border-b border-white/10 pb-2 shrink-0">
+            Start Walk-in Session
+          </h3>
+
+          <form onSubmit={handleStartWalkInSubmit} className="flex-1 flex flex-col justify-between pt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-sans text-gray-400 block mb-1">Group Leader Name</label>
+                <input
+                  type="text"
+                  value={walkInForm.groupLeader}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, groupLeader: e.target.value })}
+                  placeholder="Enter leader name"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0F1219] border border-white/10 focus:border-purple-500/50 text-white text-[11px] outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-sans text-gray-400 block mb-1">Mobile Number (Optional)</label>
+                <input
+                  type="text"
+                  value={walkInForm.mobile}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, mobile: e.target.value })}
+                  placeholder="+91 86102 72573"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0F1219] border border-white/10 focus:border-purple-500/50 text-white text-[11px] outline-none transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div>
+                <label className="text-[10px] font-sans text-gray-400 block mb-1">Select Device</label>
+                <select 
+                  value={walkInForm.device}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, device: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg bg-[#0F1219] border border-white/10 focus:border-purple-500/50 text-white text-[11px] outline-none appearance-none cursor-pointer"
+                >
+                  <option value="PlayStation 5">PlayStation 5</option>
+                  <option value="PlayStation 4">PlayStation 4</option>
+                  <option value="PlayStation 2">PlayStation 2</option>
+                  <option value="PS VR2">PS VR2</option>
+                  <option value="Racing Simulator">Racing Simulator</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-sans text-gray-400 block mb-1">Select Console</label>
+                <select 
+                  value={walkInForm.consoleId}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, consoleId: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg bg-[#0F1219] border border-white/10 focus:border-purple-500/50 text-white text-[11px] outline-none appearance-none cursor-pointer"
+                >
+                  {stations.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-2">
+              <label className="text-[10px] font-sans text-gray-400 block mb-1">Number of Players</label>
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4].map(num => (
+                  <button
+                    type="button"
+                    key={num}
+                    onClick={() => setWalkInForm({ ...walkInForm, numPlayers: num })}
+                    className={`w-8 h-7 rounded border flex items-center justify-center text-[11px] font-sans transition-all ${
+                      walkInForm.numPlayers === num
+                        ? 'bg-[#6B21A8] border-[#9333EA] text-white shadow-[0_0_8px_rgba(147,51,234,0.4)]'
+                        : 'bg-[#0F1219] border-white/10 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div>
+                <label className="text-[10px] font-sans text-gray-400 block mb-1">Duration</label>
+                <select 
+                  value={walkInForm.duration}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, duration: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg bg-[#0F1219] border border-white/10 focus:border-purple-500/50 text-white text-[11px] outline-none appearance-none cursor-pointer"
+                >
+                  <option>1 Hour</option>
+                  <option>2 Hours</option>
+                  <option>3 Hours</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-sans text-gray-400 block mb-1">Hourly Price</label>
+                <input
+                  type="text"
+                  value={walkInForm.hourlyPrice || '200'}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, hourlyPrice: e.target.value })}
+                  placeholder="₹ 200"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0F1219] border border-white/10 focus:border-purple-500/50 text-white text-[11px] outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 flex gap-2.5 mt-auto">
+              <button
+                type="button"
+                className="flex-[0.35] py-2 rounded-lg bg-transparent border border-white/20 hover:border-white/40 font-sans text-[11px] text-gray-300 transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                type="submit"
+                className="flex-[0.65] py-2 rounded-lg bg-[#6B21A8] hover:bg-[#7E22CE] font-sans text-[11px] text-white shadow-[0_0_12px_rgba(107,33,168,0.5)] transition-colors"
+              >
+                Start Session
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Column 2: Live Session Details */}
+        <div className="lg:col-span-3 glass-panel p-3.5 sm:p-4 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2 shrink-0">
+            <h3 className="font-cyber text-[14px] font-bold text-white tracking-wider">
+              Live Session Details - {selectedStation.name}
+            </h3>
+            <span className="px-2 py-0.5 rounded bg-[#1E3A8A]/40 text-[#60A5FA] border border-[#3B82F6]/30 text-[9px] font-cyber tracking-wide">
+              {selectedStation.status === 'ACTIVE' ? 'Running' : selectedStation.status}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 my-3 flex-1 px-1">
+            <div className="w-[100px] h-[100px] rounded-full border-[5px] border-[#3B82F6] flex flex-col items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.2)] shrink-0 bg-[#0F1219]/50">
+              <span className="font-mono text-[22px] font-bold text-white tracking-tighter">
+                {formatTimer(selectedStation.elapsedSeconds || 4532)}
+              </span>
+              <span className="text-[9px] font-sans text-gray-400 mt-1">Elapsed Time</span>
+            </div>
+
+            <div className="flex-1 space-y-2 font-sans text-[11px] text-gray-400">
+              <div className="flex justify-between items-center"><span className="w-24">Group Leader</span> <span className="text-white text-right break-words">{selectedStation.customerName || 'Arun Kumar'}</span></div>
+              <div className="flex justify-between items-center"><span className="w-24">Players</span> <span className="text-white text-right font-mono">{selectedStation.playersCount || 4} / {selectedStation.controllersTotal || 4}</span></div>
+              <div className="flex justify-between items-center"><span className="w-24">Controllers Used</span> <span className="text-white text-right font-mono flex items-center gap-1">{selectedStation.controllersUsed || 4} / 4 <Gamepad2 className="w-3 h-3 text-[#10B981]" /></span></div>
+              <div className="flex justify-between items-center"><span className="w-24">Booked Duration</span> <span className="text-white text-right font-mono">02:00:00</span></div>
+              <div className="flex justify-between items-center"><span className="w-24">Remaining Time</span> <span className={`font-mono text-right ${selectedStation.isEndingSoon ? "text-amber-400 animate-pulse" : "text-white"}`}>{formatTimer(selectedStation.remainingSeconds || 2668)}</span></div>
+              <div className="flex justify-between items-center"><span className="w-24">Current Amount</span> <span className="text-white text-right font-mono">₹ {selectedStation.price || 400}</span></div>
+              <div className="flex justify-between items-center"><span className="w-24">Estimated Final</span> <span className="text-white text-right font-mono">₹ {selectedStation.price || 400}</span></div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 pt-2 shrink-0">
+            <button
+              onClick={() => handleExtend(selectedStation.id, 30)}
+              className="py-2 rounded-lg bg-[#3B286D]/40 border border-[#6B21A8]/50 hover:bg-[#4C1D95]/60 text-[10px] font-sans text-[#D8B4FE] transition-colors"
+            >
+              Extend Session
+            </button>
+            <button
+              onClick={() => handlePause(selectedStation.id)}
+              className="py-2 rounded-lg bg-[#78350F]/40 border border-[#D97706]/50 hover:bg-[#92400E]/60 text-[10px] font-sans text-[#FCD34D] transition-colors"
+            >
+              {selectedStation.isPaused ? 'Resume Session' : 'Pause Session'}
+            </button>
+            <button
+              onClick={() => handleEnd(selectedStation.id)}
+              className="py-2 rounded-lg bg-[#7F1D1D]/40 border border-[#DC2626]/50 hover:bg-[#991B1B]/60 text-[10px] font-sans text-[#FCA5A5] transition-colors"
+            >
+              End Session
+            </button>
+          </div>
+        </div>
+
+        {/* Column 3: Players & Controllers Panel */}
+        <div className="lg:col-span-3 glass-panel p-3.5 sm:p-4 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden">
+          <h3 className="font-cyber text-[14px] font-bold text-white tracking-wider border-b border-white/10 pb-2 shrink-0">
+            Players / Controllers - {selectedStation.name}
+          </h3>
+
+          <div className="flex-1 flex flex-col justify-evenly py-2 font-sans">
+            <div>
+              <span className="text-[11px] text-gray-400 block mb-3">Players in this Session ({selectedStation.playersCount || 4})</span>
+              <div className="flex items-center justify-between px-2">
+                {(selectedStation.players || ['Arun', 'Vicky', 'Mani', 'Ravi']).map((p, idx) => (
+                  <div key={idx} className="flex flex-col items-center gap-1.5">
+                    <img 
+                      src={`https://ui-avatars.com/api/?name=${p}&background=random&color=fff&size=48`} 
+                      alt={p} 
+                      className="w-[42px] h-[42px] rounded-full object-cover border-2 border-slate-700 shadow-lg"
+                    />
+                    <span className="text-[10px] text-gray-300 text-center">{p}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-white/5">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-400">Controllers Used</span>
+                  <span className="font-mono text-gray-300">{selectedStation.controllersUsed || 4} / 4</span>
+                </div>
+                <div className="flex gap-2">
+                  {[...Array(selectedStation.controllersUsed || 4)].map((_, i) => (
+                    <Gamepad2 key={i} strokeWidth={1.5} className="w-7 h-7 text-[#10B981] drop-shadow-[0_0_4px_rgba(16,185,129,0.4)]" />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-400">Controllers Available</span>
+                  <span className="font-mono text-gray-300">0 / 4</span>
+                </div>
+                <div className="flex gap-2">
+                  {[...Array(4)].map((_, i) => (
+                    <Gamepad2 key={`avail-${i}`} strokeWidth={1.5} className="w-7 h-7 text-gray-700/60" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 4: Upcoming Session Endings & Recent Activity */}
+        <div className="lg:col-span-3 glass-panel p-3.5 sm:p-4 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden font-sans">
+          
+          <div className="flex-1 flex flex-col justify-between">
+            {/* Upcoming Session Endings */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                <h3 className="font-cyber text-[13px] font-bold text-white tracking-wider">
+                  Upcoming Session Endings
+                </h3>
+                <button 
+                  onClick={() => onNavigateTab && onNavigateTab('SESSIONS')}
+                  className="text-[10px] text-gray-400 hover:text-white transition-colors"
+                >
+                  View All
+                </button>
+              </div>
+              
+              <div className="space-y-2.5 text-[11px]">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300 flex items-center gap-2">
+                    <Tv className="w-3.5 h-3.5 text-gray-500" /> PS5 - 2
+                  </span>
+                  <span className="font-mono text-[#F97316]">Ends in 17 min</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300 flex items-center gap-2">
+                    <Tv className="w-3.5 h-3.5 text-gray-500" /> PS4 - 1
+                  </span>
+                  <span className="font-mono text-[#EF4444]">Ends in 04 min</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300 flex items-center gap-2">
+                    <Tv className="w-3.5 h-3.5 text-gray-500" /> SIM - 1
+                  </span>
+                  <span className="font-mono text-[#F97316]">Ends in 09 min</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300 flex items-center gap-2">
+                    <Tv className="w-3.5 h-3.5 text-gray-500" /> VR - 1
+                  </span>
+                  <span className="font-mono text-[#10B981]">Ends in 29 min</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="space-y-3 pt-3">
+              <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                <h3 className="font-cyber text-[13px] font-bold text-white tracking-wider">
+                  Recent Activity
+                </h3>
+                <button 
+                  onClick={() => onNavigateTab && onNavigateTab('ACTIVITY')}
+                  className="text-[10px] text-gray-400 hover:text-white transition-colors"
+                >
+                  View All
+                </button>
+              </div>
+
+              <div className="space-y-2.5 text-[10px]">
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-gray-300 flex items-start gap-2 leading-tight">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] mt-1 shrink-0" /> 
+                    <span>Session started on PS5 - 1 by Arun Kumar</span>
+                  </span>
+                  <span className="font-mono text-gray-500 shrink-0">11:00 PM</span>
+                </div>
+                
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-gray-300 flex items-start gap-2 leading-tight">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] mt-1 shrink-0" /> 
+                    <span>Session started on PS5 - 2 by Vicky Raj</span>
+                  </span>
+                  <span className="font-mono text-gray-500 shrink-0">11:03 PM</span>
+                </div>
+                
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-gray-300 flex items-start gap-2 leading-tight">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] mt-1 shrink-0" /> 
+                    <span>Session started on PS4 - 1 by Mani Prabhu</span>
+                  </span>
+                  <span className="font-mono text-gray-500 shrink-0">11:10 PM</span>
+                </div>
+                
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-gray-300 flex items-start gap-2 leading-tight">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#EF4444] mt-1 shrink-0" /> 
+                    <span>Session ended on PS2 - 1 by Karthik Dev</span>
+                  </span>
+                  <span className="font-mono text-gray-500 shrink-0">10:50 PM</span>
+                </div>
+                
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-gray-300 flex items-start gap-2 leading-tight">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] mt-1 shrink-0" /> 
+                    <span>Payment collected from PS2 - 1</span>
+                  </span>
+                  <span className="font-mono text-gray-500 shrink-0">10:51 PM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}

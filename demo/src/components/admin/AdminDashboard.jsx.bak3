@@ -1,0 +1,344 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authService } from '../../services/authService';
+import { sessionService } from '../../services/sessionService';
+import ErrorBoundary from './ErrorBoundary';
+import { 
+  ShieldCheck, 
+  LogOut, 
+  ArrowLeft, 
+  LayoutDashboard, 
+  Clock, 
+  Calendar, 
+  Crown, 
+  Gamepad2, 
+  Globe, 
+  Image, 
+  ShoppingBag, 
+  BarChart3, 
+  Settings, 
+  ChevronLeft, 
+  ChevronRight, 
+  Bell,
+  Play,
+  Users,
+  Tv,
+  Film,
+  Zap
+} from 'lucide-react';
+
+import DashboardOverviewModule from './modules/DashboardOverviewModule';
+import LiveSessionsModule from './modules/LiveSessionsModule';
+import ActivityModule from './modules/ActivityModule';
+import BookingModule from './modules/BookingModule';
+import MembershipModule from './modules/MembershipModule';
+import GameModule from './modules/GameModule';
+import WebsiteContentModule from './modules/WebsiteContentModule';
+import GalleryModule from './modules/GalleryModule';
+import SnacksModule from './modules/SnacksModule';
+import ReportsModule from './modules/ReportsModule';
+import SettingsModule from './modules/SettingsModule';
+import PlayersControllersModule from './modules/PlayersControllersModule';
+import DevicesModule from './modules/DevicesModule';
+
+export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('DASHBOARD');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Controller Metrics & Notifications
+  const [controllerMetrics, setControllerMetrics] = useState({ totalControllers: 20, controllersInUse: 14, availableControllers: 6 });
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const fetchHeaderData = async () => {
+    const ctrl = await sessionService.getControllerMetrics();
+    setControllerMetrics(ctrl);
+    const data = await sessionService.getNotifications();
+    setNotifications(data || []);
+  };
+
+  useEffect(() => {
+    fetchHeaderData();
+    const interval = setInterval(fetchHeaderData, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleMarkAllRead = async () => {
+    const updated = await sessionService.markAllNotificationsRead();
+    setNotifications(updated);
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/admin/login');
+  };
+
+  const handleBackToWebsite = () => {
+    navigate('/');
+  };
+
+  const navItems = [
+    { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'SESSIONS', label: 'Live Sessions', icon: Play },
+    { id: 'WALKIN', label: 'Walk-in Session', icon: Zap },
+    { id: 'BOOKINGS', label: 'Bookings', icon: Calendar },
+    { id: 'PLAYERS_CTRL', label: 'Players & Controllers', icon: Gamepad2 },
+    { id: 'DEVICES', label: 'Devices', icon: Tv },
+    { id: 'SNACKS', label: 'Snack & Drinks', icon: ShoppingBag },
+    { id: 'MEMBERSHIPS', label: 'Memberships', icon: Crown },
+    { id: 'REPORTS', label: 'Reports & Analytics', icon: BarChart3 },
+    { id: 'ACTIVITY', label: 'Activity Log', icon: Clock },
+    { id: 'GALLERY', label: 'Gallery Manager', icon: Image },
+    { id: 'WEBSITE', label: 'Website Content', icon: Globe },
+    { id: 'SETTINGS', label: 'Settings', icon: Settings },
+  ];
+
+  const renderModuleContent = () => {
+    switch (activeTab) {
+      case 'DASHBOARD':
+      case 'WALKIN':
+        return <DashboardOverviewModule onNavigateTab={setActiveTab} />;
+      case 'SESSIONS':
+        return <LiveSessionsModule />;
+      case 'PLAYERS_CTRL':
+        return <PlayersControllersModule />;
+      case 'DEVICES':
+        return <DevicesModule />;
+      case 'ACTIVITY':
+        return <ActivityModule />;
+      case 'BOOKINGS':
+        return <BookingModule />;
+      case 'MEMBERSHIPS':
+        return <MembershipModule />;
+      case 'GAMES':
+        return <GameModule />;
+      case 'WEBSITE':
+        return <WebsiteContentModule />;
+      case 'GALLERY':
+        return <GalleryModule />;
+      case 'SNACKS':
+        return <SnacksModule />;
+      case 'REPORTS':
+        return <ReportsModule />;
+      case 'SETTINGS':
+        return <SettingsModule />;
+      default:
+        return <DashboardOverviewModule onNavigateTab={setActiveTab} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen w-full fixed inset-0 z-50 bg-[#050713] text-gray-100 flex flex-col font-sans overflow-hidden">
+      
+      {/* TOP NAVIGATION BAR */}
+      <header className="h-16 px-4 sm:px-6 bg-[#090d1c] border-b border-purple-500/30 flex items-center justify-between shrink-0 relative z-30 shadow-[0_4px_25px_rgba(0,0,0,0.8)]">
+        
+        {/* Left Brand */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <img
+              src="/images/logo/gforce-logo.png"
+              alt="G-Force Gaming Cafe Logo"
+              className="h-9 sm:h-10 w-auto object-contain bg-transparent filter drop-shadow-[0_0_8px_#ff4fd8]"
+            />
+            <div className="flex flex-col leading-tight">
+              <span className="font-cyber font-extrabold text-sm sm:text-base tracking-wider text-white flex items-center gap-2">
+                G-FORCE <span className="text-pink-400 font-bold text-xs sm:text-sm">GAMING CAFÉ</span>
+              </span>
+              <span className="text-[10px] font-mono text-purple-400 tracking-widest uppercase">
+                ENTERPRISE POS ERP DASHBOARD
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Controller Stat Pills */}
+        <div className="hidden lg:flex items-center gap-3">
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-900/90 border border-white/10 text-xs sm:text-sm font-cyber flex items-center gap-2">
+            <span className="text-purple-400 font-bold text-sm sm:text-base">🎮 {controllerMetrics.totalControllers}</span>
+            <span className="text-gray-400 text-xs font-bold">Total Controllers</span>
+          </div>
+
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-900/90 border border-white/10 text-xs sm:text-sm font-cyber flex items-center gap-2">
+            <span className="text-emerald-400 font-bold text-sm sm:text-base">🎮 {controllerMetrics.controllersInUse}</span>
+            <span className="text-gray-400 text-xs font-bold">In Use</span>
+          </div>
+
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-900/90 border border-white/10 text-xs sm:text-sm font-cyber flex items-center gap-2">
+            <span className="text-cyan-400 font-bold text-sm sm:text-base">🎮 {controllerMetrics.availableControllers}</span>
+            <span className="text-gray-400 text-xs font-bold">Available</span>
+          </div>
+        </div>
+
+        {/* Right Controls */}
+        <div className="flex items-center gap-3">
+          
+          {/* Notification Bell 🔔 */}
+          <div className="relative">
+            <button
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="p-2 rounded-xl bg-slate-900 border border-white/10 hover:border-purple-500 text-gray-300 hover:text-white transition-all relative cursor-pointer"
+              title="Notification Center"
+            >
+              <Bell className="w-5 h-5 text-purple-400" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-mono font-bold flex items-center justify-center animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Drawer Popover */}
+            {notifOpen && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0c0819] border border-purple-500/40 rounded-2xl p-4 shadow-[0_0_40px_rgba(168,85,247,0.3)] z-50 space-y-3 font-sans">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-purple-400" />
+                    <span className="font-cyber font-extrabold text-xs text-white uppercase tracking-wider">
+                      System Notifications
+                    </span>
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-[10px] font-cyber text-pink-400 hover:underline"
+                    >
+                      Mark All Read
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {notifications.map((n) => (
+                    <div 
+                      key={n.id} 
+                      className={`p-3 rounded-xl border text-xs space-y-1 transition-all ${
+                        n.type === 'ALERT'
+                          ? 'bg-red-950/40 border-red-500/40 text-red-200'
+                          : n.type === 'WARNING'
+                          ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
+                          : 'bg-slate-900 border-white/10 text-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-cyber font-bold">
+                        <span className="text-white">{n.title}</span>
+                        <span className="text-[9px] font-mono text-gray-400">{n.time}</span>
+                      </div>
+                      <p className="text-[11px] font-sans text-gray-300 leading-tight">
+                        {n.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Admin Profile Badge */}
+          <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 text-xs">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white text-xs font-bold font-cyber">
+              A
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className="font-cyber font-bold text-white text-xs">Admin</span>
+              <span className="text-[9px] text-purple-400 font-mono">Super Admin</span>
+            </div>
+          </div>
+
+          {/* Back to Website Button */}
+          <button
+            onClick={handleBackToWebsite}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-white/10 hover:border-purple-400 text-xs font-cyber text-gray-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-purple-400" />
+            <span className="hidden sm:inline">WEBSITE</span>
+          </button>
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="px-3.5 py-1.5 rounded-xl bg-red-950/60 border border-red-500/40 hover:border-red-400 text-red-300 hover:text-white text-xs font-cyber font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(239,68,68,0.2)]"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>LOGOUT</span>
+          </button>
+        </div>
+      </header>
+
+      {/* DASHBOARD BODY (ONE-SCREEN FIT ON DESKTOP - NO VERTICAL SCROLLBAR) */}
+      <div className="flex-1 flex overflow-hidden relative">
+        
+        {/* LEFT SIDEBAR */}
+        <aside className={`bg-[#070a17] border-r border-white/10 flex flex-col justify-between transition-all duration-300 z-20 shrink-0 ${
+          isSidebarCollapsed ? 'w-16' : 'w-56 sm:w-64'
+        }`}>
+          
+          {/* Top Sidebar Menu Items */}
+          <div className="p-3 space-y-1 overflow-y-auto">
+            <div className="flex items-center justify-between px-2 py-1 mb-2 border-b border-white/5">
+              {!isSidebarCollapsed && (
+                <span className="text-[10px] font-cyber tracking-widest text-gray-500 uppercase font-bold">
+                  ERP NAVIGATION
+                </span>
+              )}
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-1 rounded-lg bg-slate-900 border border-white/10 hover:border-purple-500 text-gray-400 hover:text-white transition-all ml-auto cursor-pointer"
+              >
+                {isSidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-sm font-cyber font-bold transition-all group relative cursor-pointer ${
+                    isActive
+                      ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-purple-400'}`} />
+                  
+                  {!isSidebarCollapsed && (
+                    <span className="truncate tracking-wider uppercase text-[11px] sm:text-xs">
+                      {item.label}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sidebar Promo Banner */}
+          {!isSidebarCollapsed && (
+            <div className="m-3 p-3.5 rounded-2xl bg-gradient-to-br from-purple-900/60 to-pink-900/60 border border-purple-500/40 text-center relative overflow-hidden shadow-lg">
+              <h4 className="font-cyber font-black text-xs text-white uppercase tracking-wider">POWER UP YOUR GAME</h4>
+              <p className="text-[9px] font-mono text-purple-200 mt-0.5">Enterprise ERP POS System</p>
+            </div>
+          )}
+
+        </aside>
+
+        {/* MAIN DASHBOARD CONTENT AREA */}
+        <main className="flex-1 bg-[#050713] overflow-y-auto lg:overflow-hidden p-3 sm:p-4 lg:p-5 flex flex-col justify-between">
+          <div className="w-full max-w-[1920px] mx-auto h-full flex flex-col justify-between animate-in fade-in duration-300">
+            <ErrorBoundary moduleName={navItems.find(i => i.id === activeTab)?.label || 'Module'}>
+              {renderModuleContent()}
+            </ErrorBoundary>
+          </div>
+        </main>
+
+      </div>
+
+    </div>
+  );
+}
