@@ -36,7 +36,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#070b14] flex items-center justify-center p-4 py-8 relative overflow-x-hidden overflow-y-auto">
       {/* Background Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-pink-500/10 rounded-full blur-[100px] pointer-events-none" />

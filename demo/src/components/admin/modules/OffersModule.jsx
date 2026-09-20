@@ -822,7 +822,7 @@ export default function OffersModule({ onNavigateTab }) {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                           <label className="text-[10px] font-cyber text-emerald-400 block mb-1">Cash (₹)</label>
                           <input
@@ -979,8 +979,8 @@ export default function OffersModule({ onNavigateTab }) {
 
       {/* CREATE / EDIT OFFER MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md glass-panel p-5 rounded-2xl border border-pink-500/40 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md glass-panel p-5 rounded-2xl border border-pink-500/40 shadow-2xl space-y-4 max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="font-cyber font-bold text-white text-base flex items-center gap-2">
                 <Gift className="w-5 h-5 text-pink-400" />

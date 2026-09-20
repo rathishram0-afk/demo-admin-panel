@@ -258,7 +258,7 @@ export default function WebsiteEditorModule() {
           {/* MERGED GALLERY MANAGER */}
           {activeSection === 'gallery' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
                 <h3 className="font-cyber text-sm font-bold text-white uppercase tracking-wider">
                   Gallery Manager
                 </h3>
@@ -428,7 +428,7 @@ export default function WebsiteEditorModule() {
 
         {/* LIVE WEBSITE PREVIEW PANEL (5 COLS) */}
         <div className="lg:col-span-5 glass-panel p-4 rounded-2xl border border-white/10 shadow-xl flex flex-col space-y-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
             <span className="font-cyber text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
               <Eye className="w-4 h-4 text-cyan-400" /> Live Website Preview
             </span>

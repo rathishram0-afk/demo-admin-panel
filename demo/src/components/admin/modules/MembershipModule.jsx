@@ -3,6 +3,7 @@ import { membershipService } from '../../../services/membershipService';
 import MembershipDetailsModal from '../MembershipDetailsModal';
 import { MEMBERSHIP_PLANS } from '../../../config/membershipConfig';
 import ErrorBoundary from '../ErrorBoundary';
+import { MobileCard, MobileCardList, MobileCardRow, MobileCardActions, MobileCardEmpty } from '../shared/MobileCard';
 import { supabase } from '../../../services/supabase';
 import { 
   Users, 
@@ -468,6 +469,107 @@ export default function MembershipModule() {
     return colors[index % colors.length];
   };
 
+  const getMemberView = (m) => {
+    const planName = m.membership_plan || '';
+    const is3Month = planName.includes('3 Month') || planName.includes('Three') || planName.includes('499');
+    return {
+      name: m.full_name || '',
+      phone: m.mobile_number || '',
+      planName,
+      is3Month,
+      status: m.status === 'Approved' ? 'Active' : m.status || 'Pending',
+      reqId: m.id,
+    };
+  };
+
+  const renderPlanBadge = (m) => {
+    const { planName, is3Month } = getMemberView(m);
+    return (
+      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-cyber font-bold inline-block ${
+        is3Month
+          ? 'bg-purple-950/90 border border-purple-500/50 text-purple-300'
+          : 'bg-blue-950/90 border border-blue-500/50 text-blue-300'
+      }`}>
+        {planName.toUpperCase()} - ₹{m.price || (is3Month ? 499 : 1999)}
+      </span>
+    );
+  };
+
+  const renderMemberStatus = (m) => {
+    const { status } = getMemberView(m);
+    return (
+      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-cyber font-bold uppercase tracking-wider ${
+        status === 'Active'
+          ? 'bg-emerald-950/90 text-emerald-400 border border-emerald-500/40'
+          : status === 'Expired'
+          ? 'bg-red-950/90 text-red-400 border border-red-500/40'
+          : status === 'Pending'
+          ? 'bg-amber-950/90 text-amber-400 border border-amber-500/40 animate-pulse'
+          : status === 'Cancelled'
+          ? 'bg-gray-800 text-gray-300 border border-gray-600'
+          : status === 'Rejected'
+          ? 'bg-purple-950 text-purple-400 border border-purple-600'
+          : 'bg-blue-950 text-blue-400 border border-blue-600'
+      }`}>
+        {status}
+      </span>
+    );
+  };
+
+  const renderMemberActions = (m) => {
+    const { status, reqId } = getMemberView(m);
+    return (
+      <>
+        <button
+          onClick={() => {
+            setSelectedMember(m);
+            setDetailsModalOpen(true);
+          }}
+          className="p-2 sm:p-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+          title="View Details"
+        >
+          <Eye className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          onClick={() => handleEditMemberOpen(m)}
+          className="p-2 sm:p-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 transition-colors cursor-pointer flex items-center justify-center"
+          title="Edit Member"
+        >
+          <Edit2 className="w-3.5 h-3.5" />
+        </button>
+
+        {m.status === 'Pending' && (
+          <button
+            onClick={() => handleUpdateStatus(reqId, 'Active')}
+            className="p-2 sm:p-1 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 border border-emerald-500/40 transition-colors cursor-pointer flex items-center justify-center"
+            title="Approve Member"
+          >
+            <Check className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {(status === 'Active' || status === 'Expired') && (
+          <button
+            onClick={() => handleRenewMember(reqId)}
+            className="p-2 sm:p-1 rounded bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-500/40 transition-colors cursor-pointer flex items-center justify-center"
+            title="Renew Membership"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        <button
+          onClick={() => setDeleteConfirmState({ isOpen: true, member: m })}
+          className="p-2 sm:p-1 rounded bg-red-950/60 hover:bg-red-900 text-gray-400 hover:text-red-400 transition-colors cursor-pointer flex items-center justify-center"
+          title="Delete Member"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </>
+    );
+  };
+
   return (
     <ErrorBoundary moduleName="Membership Management Module">
       <div className="space-y-4 text-gray-100 font-sans select-none overflow-x-hidden min-w-0">
@@ -695,8 +797,48 @@ export default function MembershipModule() {
 
             </div>
 
+            {/* Mobile card list — the sub-md stand-in for the table below */}
+            {sortedMembers.length === 0 ? (
+              <MobileCardEmpty icon={User}>
+                No Members Found. Use "+ Add New Member" above, or purchase a membership from the website.
+              </MobileCardEmpty>
+            ) : (
+              <MobileCardList>
+                {sortedMembers.map((m, idx) => {
+                  const { name, phone, reqId } = getMemberView(m);
+                  return (
+                    <MobileCard
+                      key={reqId || idx}
+                      title={name}
+                      subtitle={reqId}
+                      badge={renderMemberStatus(m)}
+                      footer={<MobileCardActions>{renderMemberActions(m)}</MobileCardActions>}
+                    >
+                      <MobileCardRow label="Mobile" value={phone || '-'} className="font-mono" />
+                      <MobileCardRow label="Plan" value={renderPlanBadge(m)} />
+                      <MobileCardRow
+                        label="Payment"
+                        value={
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono">
+                            <CreditCard className="w-3 h-3 text-cyan-400" />
+                            {m.paymentMode || 'GPay'}
+                          </span>
+                        }
+                      />
+                      <MobileCardRow label="Start" value={m.preferred_start_date || '-'} className="font-mono" />
+                      <MobileCardRow
+                        label="Expiry"
+                        value={m.expiryDate || '-'}
+                        className={`font-mono ${getMemberView(m).status === 'Expired' ? 'text-red-400 font-bold' : ''}`}
+                      />
+                    </MobileCard>
+                  );
+                })}
+              </MobileCardList>
+            )}
+
             {/* TABLE CONTAINER */}
-            <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#09071B]/90">
+            <div className="hidden md:block glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#09071B]/90">
               <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left border-collapse min-w-[780px]">
                   <thead>
@@ -725,12 +867,7 @@ export default function MembershipModule() {
                       </tr>
                     ) : (
                       sortedMembers.map((m, idx) => {
-                        const name = m.full_name || '';
-                        const phone = m.mobile_number || '';
-                        const planName = m.membership_plan || '';
-                        const is3Month = planName.includes('3 Month') || planName.includes('Three') || planName.includes('499');
-                        const status = m.status === 'Approved' ? 'Active' : m.status || 'Pending';
-                        const reqId = m.id || m.id;
+                        const { name, phone, reqId } = getMemberView(m);
                         const isSelected = selectedMember && (selectedMember.requestId || selectedMember.id) === reqId;
 
                         return (
@@ -758,13 +895,7 @@ export default function MembershipModule() {
 
                             {/* Plan Badge matching reference image styling */}
                             <td className="py-3 px-3 whitespace-nowrap">
-                              <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-cyber font-bold inline-block ${
-                                is3Month
-                                  ? 'bg-purple-950/90 border border-purple-500/50 text-purple-300'
-                                  : 'bg-blue-950/90 border border-blue-500/50 text-blue-300'
-                              }`}>
-                                {planName.toUpperCase()} - ₹{m.price || (is3Month ? 499 : 1999)}
-                              </span>
+                              {renderPlanBadge(m)}
                             </td>
 
                             {/* Payment Method */}
@@ -789,72 +920,13 @@ export default function MembershipModule() {
 
                             {/* Status Badge matching reference screenshot colors */}
                             <td className="py-3 px-3 whitespace-nowrap">
-                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-cyber font-bold uppercase tracking-wider ${
-                                status === 'Active'
-                                  ? 'bg-emerald-950/90 text-emerald-400 border border-emerald-500/40'
-                                  : status === 'Expired'
-                                  ? 'bg-red-950/90 text-red-400 border border-red-500/40'
-                                  : status === 'Pending'
-                                  ? 'bg-amber-950/90 text-amber-400 border border-amber-500/40 animate-pulse'
-                                  : status === 'Cancelled'
-                                  ? 'bg-gray-800 text-gray-300 border border-gray-600'
-                                  : status === 'Rejected'
-                                  ? 'bg-purple-950 text-purple-400 border border-purple-600'
-                                  : 'bg-blue-950 text-blue-400 border border-blue-600'
-                              }`}>
-                                {status}
-                              </span>
+                              {renderMemberStatus(m)}
                             </td>
 
                             {/* Actions Buttons */}
                             <td className="py-3 px-3 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  onClick={() => {
-                                    setSelectedMember(m);
-                                    setDetailsModalOpen(true);
-                                  }}
-                                  className="p-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
-                                  title="View Details"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-
-                                <button
-                                  onClick={() => handleEditMemberOpen(m)}
-                                  className="p-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 transition-colors cursor-pointer"
-                                  title="Edit Member"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-
-                                {m.status === 'Pending' && (
-                                  <button
-                                    onClick={() => handleUpdateStatus(reqId, 'Active')}
-                                    className="p-1 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 border border-emerald-500/40 transition-colors cursor-pointer"
-                                    title="Approve Member"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-
-                                {(status === 'Active' || status === 'Expired') && (
-                                  <button
-                                    onClick={() => handleRenewMember(reqId)}
-                                    className="p-1 rounded bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-500/40 transition-colors cursor-pointer"
-                                    title="Renew Membership"
-                                  >
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-
-                                <button
-                                  onClick={() => setDeleteConfirmState({ isOpen: true, member: m })}
-                                  className="p-1 rounded bg-red-950/60 hover:bg-red-900 text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
-                                  title="Delete Member"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                {renderMemberActions(m)}
                               </div>
                             </td>
 
@@ -867,7 +939,7 @@ export default function MembershipModule() {
               </div>
 
               {/* Table Footer Pagination matching reference image */}
-              <div className="p-3 border-t border-white/10 bg-slate-950/60 flex items-center justify-between text-xs text-gray-400 font-mono">
+              <div className="p-3 border-t border-white/10 bg-slate-950/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-gray-400 font-mono">
                 <span>Showing {sortedMembers.length > 0 ? 1 : 0} to {sortedMembers.length} of {metrics.totalMemberships} members</span>
                 <div className="flex items-center gap-1">
                   <button className="p-1 rounded hover:bg-white/10 text-gray-400 cursor-pointer"><ChevronLeft className="w-4 h-4" /></button>
@@ -1081,8 +1153,8 @@ export default function MembershipModule() {
 
         {/* Modal: Add New Member */}
         {addModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="glass-panel bg-[#0F0C2B] rounded-3xl border border-purple-500/40 p-6 max-w-lg w-full space-y-4 shadow-2xl relative">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center overflow-y-auto p-3 sm:p-4">
+            <div className="glass-panel bg-[#0F0C2B] rounded-3xl border border-purple-500/40 p-6 max-w-lg w-full space-y-4 shadow-2xl relative max-h-[90dvh] overflow-y-auto custom-scrollbar">
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <h3 className="font-cyber text-lg font-black text-white uppercase flex items-center gap-2">
                   <Plus className="w-5 h-5 text-purple-400" /> ADD NEW MEMBER
@@ -1179,8 +1251,8 @@ export default function MembershipModule() {
 
         {/* Modal: Edit Member */}
         {editModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="glass-panel bg-[#0F0C2B] rounded-3xl border border-cyan-500/40 p-6 max-w-lg w-full space-y-4 shadow-2xl relative">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center overflow-y-auto p-3 sm:p-4">
+            <div className="glass-panel bg-[#0F0C2B] rounded-3xl border border-cyan-500/40 p-6 max-w-lg w-full space-y-4 shadow-2xl relative max-h-[90dvh] overflow-y-auto custom-scrollbar">
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <h3 className="font-cyber text-lg font-black text-white uppercase flex items-center gap-2">
                   <Edit2 className="w-5 h-5 text-cyan-400" /> EDIT MEMBER DETAILS
@@ -1281,8 +1353,8 @@ export default function MembershipModule() {
 
         {/* Modal: Delete Confirmation */}
         {deleteConfirmState.isOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="glass-panel bg-[#1A0A0F] rounded-3xl border border-red-500/50 p-6 max-w-md w-full space-y-4 shadow-2xl text-center">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center overflow-y-auto p-3 sm:p-4">
+            <div className="glass-panel bg-[#1A0A0F] rounded-3xl border border-red-500/50 p-6 max-w-md w-full space-y-4 shadow-2xl text-center max-h-[90dvh] overflow-y-auto custom-scrollbar">
               <div className="w-12 h-12 rounded-full bg-red-950 border border-red-500/50 flex items-center justify-center text-red-400 mx-auto">
                 <AlertTriangle className="w-6 h-6" />
               </div>

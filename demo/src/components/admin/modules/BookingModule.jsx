@@ -4,6 +4,7 @@ import { sessionService } from '../../../services/sessionService';
 import { useRealtime } from '../../../context/RealtimeContext';
 import BookingDetailsModal from '../BookingDetailsModal';
 import ConvertBookingModal from '../ConvertBookingModal';
+import { MobileCard, MobileCardList, MobileCardRow, MobileCardActions, MobileCardEmpty } from '../shared/MobileCard';
 import { 
   Search, 
   Eye, 
@@ -136,6 +137,103 @@ export default function BookingModule() {
     return true;
   });
 
+  const getStatusFlags = (b) => ({
+    isApproved: b.booking_status === 'Approved' || b.booking_status === 'Active',
+    isPending: b.booking_status === 'Pending',
+    isConverted: b.booking_status === 'Converted' || b.booking_status === 'Running',
+    isCompleted: b.booking_status === 'Completed',
+    isRejected: b.booking_status === 'Rejected',
+  });
+
+  const renderTypeBadge = (b) => (
+    <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-cyber font-bold uppercase border ${
+      b.recordType === 'ONLINE' ? 'bg-purple-950/70 border-purple-500/50 text-purple-300' : 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
+    }`}>
+      {b.displayType}
+    </span>
+  );
+
+  const renderStatusBadge = (b) => {
+    const { isApproved, isConverted, isCompleted, isRejected } = getStatusFlags(b);
+    return (
+      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-cyber font-bold uppercase ${
+        isApproved
+          ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/50'
+          : isConverted
+          ? 'bg-purple-950 text-purple-300 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
+          : isCompleted
+          ? 'bg-blue-950 text-blue-300 border border-blue-500/50'
+          : isRejected
+          ? 'bg-red-950 text-red-400 border border-red-500/50'
+          : 'bg-amber-950 text-amber-400 border border-amber-500/50 animate-pulse'
+      }`}>
+        {b.booking_status}
+      </span>
+    );
+  };
+
+  const renderActions = (b) => {
+    const { isApproved, isPending, isConverted, isCompleted } = getStatusFlags(b);
+    return (
+      <>
+        {/* Approve Button (For Pending Online Bookings) */}
+        {b.recordType === 'ONLINE' && isPending && (
+          <button
+            onClick={() => handleUpdateStatus(b.id, 'Approved')}
+            className="px-2.5 py-1.5 sm:py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-400 text-[10px] font-cyber font-bold flex items-center justify-center gap-1 cursor-pointer transition-all"
+            title="Approve Booking"
+          >
+            <Check className="w-3.5 h-3.5" /> Approve
+          </button>
+        )}
+
+        {/* Convert to Session Button */}
+        {b.recordType === 'ONLINE' && (
+          <button
+            onClick={() => handleOpenConvertModal(b)}
+            disabled={!isApproved}
+            className={`px-3 py-1.5 sm:py-1 rounded-lg font-cyber text-[10px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+              isApproved
+                ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-[0_0_12px_rgba(168,85,247,0.5)]'
+                : isConverted
+                ? 'bg-purple-950/60 border border-purple-500/30 text-purple-400 opacity-60 cursor-not-allowed'
+                : 'bg-white/5 border border-white/10 text-gray-500 opacity-50 cursor-not-allowed'
+            }`}
+            title={
+              isApproved
+                ? "Convert this booking into a live running session"
+                : isConverted
+                ? "Already Converted"
+                : "Approve booking first"
+            }
+          >
+            <Play className="w-3 h-3 fill-current" />
+            {isConverted ? 'Converted ✓' : 'Convert to Session'}
+          </button>
+        )}
+
+        {/* Reschedule Button */}
+        {b.recordType === 'ONLINE' && !isConverted && !isCompleted && (
+          <button
+            onClick={() => { setRescheduleBookingId(b.id); setNewRescheduleDate(b.booking_date); }}
+            className="px-2 py-1.5 sm:py-1 rounded-lg bg-slate-900 border border-white/15 text-[10px] font-cyber text-cyan-300 hover:text-white cursor-pointer"
+          >
+            Reschedule
+          </button>
+        )}
+
+        {/* View Details */}
+        <button
+          onClick={() => setSelectedBooking(b)}
+          className="p-2 sm:p-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white cursor-pointer flex items-center justify-center"
+          title="View Booking Details"
+        >
+          <Eye className="w-3.5 h-3.5" />
+        </button>
+      </>
+    );
+  };
+
   return (
     <div className="space-y-4 text-gray-100 font-sans select-none overflow-x-hidden min-w-0">
       
@@ -189,8 +287,41 @@ export default function BookingModule() {
         ))}
       </div>
 
+      {/* Mobile card list — the sub-md stand-in for the table below */}
+      {filteredRecords.length === 0 ? (
+        <MobileCardEmpty icon={Calendar}>No Bookings Found.</MobileCardEmpty>
+      ) : (
+        <MobileCardList>
+          {filteredRecords.map((b, idx) => (
+            <MobileCard
+              key={b.id || idx}
+              title={b.customer_name}
+              subtitle={b.id}
+              badge={renderStatusBadge(b)}
+              footer={<MobileCardActions>{renderActions(b)}</MobileCardActions>}
+            >
+              <MobileCardRow label="Type" value={renderTypeBadge(b)} />
+              <MobileCardRow label="Phone" value={b.mobile_number || '-'} className="font-mono" />
+              <MobileCardRow
+                label="Date & Time"
+                value={
+                  <>
+                    <span className="font-mono">{b.booking_date}</span>
+                    <span className="block text-[10px] text-cyan-300 font-bold font-mono">
+                      {b.booking_time} ({b.duration || '1 hr'})
+                    </span>
+                  </>
+                }
+              />
+              <MobileCardRow label="Gaming Zone" value={b.gaming_zone} className="font-cyber text-purple-300 font-bold" />
+              <MobileCardRow label="Price" value={`₹${b.total_amount || 100}`} className="font-cyber font-bold text-emerald-400" />
+            </MobileCard>
+          ))}
+        </MobileCardList>
+      )}
+
       {/* Table Container */}
-      <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#09071B]/90">
+      <div className="hidden md:block glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#09071B]/90">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[850px]">
             <thead>
@@ -214,21 +345,11 @@ export default function BookingModule() {
                 </tr>
               ) : (
                 filteredRecords.map((b, idx) => {
-                  const isApproved = b.booking_status === 'Approved' || b.booking_status === 'Active';
-                  const isPending = b.booking_status === 'Pending';
-                  const isConverted = b.booking_status === 'Converted' || b.booking_status === 'Running';
-                  const isCompleted = b.booking_status === 'Completed';
-                  const isRejected = b.booking_status === 'Rejected';
-
                   return (
                     <tr key={b.id || idx} className="hover:bg-purple-950/20 transition-colors">
                       {/* Type Badge */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-cyber font-bold uppercase border ${
-                          b.recordType === 'ONLINE' ? 'bg-purple-950/70 border-purple-500/50 text-purple-300' : 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
-                        }`}>
-                          {b.displayType}
-                        </span>
+                        {renderTypeBadge(b)}
                       </td>
 
                       {/* Name & ID */}
@@ -264,79 +385,13 @@ export default function BookingModule() {
 
                       {/* Status Badge */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-cyber font-bold uppercase ${
-                          isApproved
-                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/50'
-                            : isConverted
-                            ? 'bg-purple-950 text-purple-300 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
-                            : isCompleted
-                            ? 'bg-blue-950 text-blue-300 border border-blue-500/50'
-                            : isRejected
-                            ? 'bg-red-950 text-red-400 border border-red-500/50'
-                            : 'bg-amber-950 text-amber-400 border border-amber-500/50 animate-pulse'
-                        }`}>
-                          {b.booking_status}
-                        </span>
+                        {renderStatusBadge(b)}
                       </td>
 
                       {/* Actions */}
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
-                          
-                          {/* Approve Button (For Pending Online Bookings) */}
-                          {b.recordType === 'ONLINE' && isPending && (
-                            <button
-                              onClick={() => handleUpdateStatus(b.id, 'Approved')}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-400 text-[10px] font-cyber font-bold flex items-center gap-1 cursor-pointer transition-all"
-                              title="Approve Booking"
-                            >
-                              <Check className="w-3.5 h-3.5" /> Approve
-                            </button>
-                          )}
-
-                          {/* Convert to Session Button */}
-                          {b.recordType === 'ONLINE' && (
-                            <button
-                              onClick={() => handleOpenConvertModal(b)}
-                              disabled={!isApproved}
-                              className={`px-3 py-1 rounded-lg font-cyber text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                                isApproved
-                                  ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-[0_0_12px_rgba(168,85,247,0.5)]'
-                                  : isConverted
-                                  ? 'bg-purple-950/60 border border-purple-500/30 text-purple-400 opacity-60 cursor-not-allowed'
-                                  : 'bg-white/5 border border-white/10 text-gray-500 opacity-50 cursor-not-allowed'
-                              }`}
-                              title={
-                                isApproved 
-                                  ? "Convert this booking into a live running session" 
-                                  : isConverted 
-                                  ? "Already Converted" 
-                                  : "Approve booking first"
-                              }
-                            >
-                              <Play className="w-3 h-3 fill-current" />
-                              {isConverted ? 'Converted ✓' : 'Convert to Session'}
-                            </button>
-                          )}
-
-                          {/* Reschedule Button */}
-                          {b.recordType === 'ONLINE' && !isConverted && !isCompleted && (
-                            <button
-                              onClick={() => { setRescheduleBookingId(b.id); setNewRescheduleDate(b.booking_date); }}
-                              className="px-2 py-1 rounded-lg bg-slate-900 border border-white/15 text-[10px] font-cyber text-cyan-300 hover:text-white cursor-pointer"
-                            >
-                              Reschedule
-                            </button>
-                          )}
-
-                          {/* View Details */}
-                          <button
-                            onClick={() => setSelectedBooking(b)}
-                            className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white cursor-pointer"
-                            title="View Booking Details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
+                          {renderActions(b)}
                         </div>
                       </td>
 
@@ -361,8 +416,8 @@ export default function BookingModule() {
 
       {/* Reschedule Modal */}
       {rescheduleBookingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="bg-[#0f091c] border border-purple-500/40 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-[#0f091c] border border-purple-500/40 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <h3 className="font-cyber text-sm font-bold text-white uppercase">Reschedule Booking {rescheduleBookingId}</h3>
             <form onSubmit={handleRescheduleSubmit} className="space-y-3">
               <div>

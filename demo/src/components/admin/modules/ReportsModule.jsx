@@ -3,6 +3,7 @@ import { sessionService } from '../../../services/sessionService';
 import { adminDataService } from '../../../services/adminDataService';
 import { useRealtime } from '../../../context/RealtimeContext';
 import CafeReportsSection from './CafeReportsSection';
+import { MobileCard, MobileCardList, MobileCardRow, MobileCardActions, MobileCardEmpty } from '../shared/MobileCard';
 import { 
   BarChart3, 
   Download, 
@@ -611,6 +612,34 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
     document.body.removeChild(link);
   };
 
+  const renderDailyActions = (r) => (
+    <>
+      <button
+        onClick={() => setViewingReport(r)}
+        className="px-2 py-1.5 sm:py-1 rounded bg-purple-950/60 border border-purple-500/30 hover:border-purple-400 text-[10px] font-bold text-purple-300 flex items-center justify-center gap-0.5 cursor-pointer"
+      >
+        <Eye className="w-2.5 h-2.5" /> View
+      </button>
+      <button
+        onClick={handleExportPDF}
+        className="px-2 py-1.5 sm:py-1 rounded bg-red-950/60 border border-red-500/30 hover:border-red-400 text-[10px] font-bold text-red-300 flex items-center justify-center gap-0.5 cursor-pointer"
+      >
+        <Printer className="w-2.5 h-2.5" /> PDF
+      </button>
+      <button
+        onClick={() => exportSingleReportCSV(r)}
+        className="px-2 py-1.5 sm:py-1 rounded bg-emerald-950/60 border border-emerald-500/30 hover:border-emerald-400 text-[10px] font-bold text-emerald-300 flex items-center justify-center gap-0.5 cursor-pointer"
+      >
+        <FileSpreadsheet className="w-2.5 h-2.5" /> CSV
+      </button>
+    </>
+  );
+
+  const paymentSummary = (r) =>
+    `Cash: ₹${(r.paymentBreakdown?.Cash || 0).toLocaleString()} / UPI: ₹${(r.paymentBreakdown?.UPI || 0).toLocaleString()}` +
+    (r.paymentBreakdown?.['Credit Card'] ? ` / CC: ₹${r.paymentBreakdown['Credit Card'].toLocaleString()}` : '') +
+    (r.paymentBreakdown?.['Debit Card'] ? ` / DC: ₹${r.paymentBreakdown['Debit Card'].toLocaleString()}` : '');
+
   return (
     <div className="space-y-4 font-sans text-gray-100 min-h-0 flex-1 flex flex-col custom-scrollbar overflow-y-auto pr-1">
       
@@ -713,7 +742,7 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
           
           <div className="space-y-4 flex-1 flex flex-col min-h-0">
             {/* Header & Export Bar */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3 shrink-0">
               <h3 className="font-cyber text-sm sm:text-base font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-purple-400" />
                 {subTab === 'DAILY' && 'Daily Reports'}
@@ -825,11 +854,118 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
               </div>
             )}
 
+            {/* CAFE REPORTS & ANALYTICS — rendered once; it is responsive on its own */}
+            {subTab === 'CAFE' && (
+              <div className="flex-1 min-h-0">
+                <CafeReportsSection />
+              </div>
+            )}
+
+            {/* Mobile card lists — the sub-md stand-in for the report tables */}
+            <div className="md:hidden flex-1 min-h-0">
+              {subTab === 'DAILY' && (
+                paginatedDaily.length === 0 ? (
+                  <MobileCardEmpty icon={BarChart3}>
+                    No Daily Reports Yet. Start a Walk-in Session or convert an Online Booking to generate reports.
+                  </MobileCardEmpty>
+                ) : (
+                  <MobileCardList>
+                    {paginatedDaily.map((r, i) => (
+                      <MobileCard
+                        key={(r.id || '') + i}
+                        title={r.dateStr.replace(' (Today)', '')}
+                        badge={r.isToday ? (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-cyber font-bold uppercase bg-purple-950/90 text-purple-300 border border-purple-500/50 shadow-[0_0_8px_rgba(168,85,247,0.3)] animate-pulse">Today</span>
+                        ) : null}
+                        footer={<MobileCardActions>{renderDailyActions(r)}</MobileCardActions>}
+                      >
+                        <MobileCardRow label="Revenue" value={`₹ ${r.revenue.toLocaleString()}`} className="font-mono text-emerald-400 font-bold" />
+                        <MobileCardRow label="Sessions" value={r.completedSessions} className="font-mono" />
+                        <MobileCardRow label="Players" value={r.players} className="font-mono text-blue-300" />
+                        <MobileCardRow label="Avg Duration" value={`${r.avgSessionMins} mins`} className="font-mono text-gray-400" />
+                        <MobileCardRow label="Peak Hour" value={r.peakHour} className="font-mono text-amber-300" />
+                        <MobileCardRow label="Top Device" value={r.mostUsedDevice} className="text-white" />
+                        <MobileCardRow label="Payments" value={paymentSummary(r)} className="text-[10px] text-gray-400" />
+                      </MobileCard>
+                    ))}
+                  </MobileCardList>
+                )
+              )}
+
+              {subTab === 'WEEKLY' && (
+                weeklyReports.length === 0 ? (
+                  <MobileCardEmpty icon={BarChart3}>No Weekly Reports Yet</MobileCardEmpty>
+                ) : (
+                  <MobileCardList>
+                    {weeklyReports.map((w, i) => (
+                      <MobileCard
+                        key={w.id || i}
+                        title={w.weekRange}
+                        accent="cyan"
+                        footer={
+                          <MobileCardActions>
+                            <button
+                              onClick={handleExportPDF}
+                              className="px-2 py-1.5 rounded bg-indigo-950/60 border border-indigo-500/30 hover:border-indigo-400 text-[10px] font-bold text-indigo-300 cursor-pointer"
+                            >
+                              Print Summary
+                            </button>
+                          </MobileCardActions>
+                        }
+                      >
+                        <MobileCardRow label="Gross Revenue" value={`₹ ${w.revenue.toLocaleString()}`} className="font-mono text-emerald-400 font-bold" />
+                        <MobileCardRow label="Sessions" value={w.totalSessions} className="font-mono" />
+                        <MobileCardRow label="Players" value={w.totalPlayers} className="font-mono text-blue-300" />
+                        <MobileCardRow label="Avg Daily Rev" value={`₹ ${w.avgDailyRevenue.toLocaleString()}`} className="font-mono text-gray-400" />
+                        <MobileCardRow label="Peak Day" value={w.peakDay} className="font-mono text-amber-300" />
+                        <MobileCardRow label="Top Device" value={w.mostUsedDevice} className="text-white" />
+                      </MobileCard>
+                    ))}
+                  </MobileCardList>
+                )
+              )}
+
+              {subTab === 'MONTHLY' && (
+                monthlyReports.length === 0 ? (
+                  <MobileCardEmpty icon={BarChart3}>No Monthly Reports Yet</MobileCardEmpty>
+                ) : (
+                  <MobileCardList>
+                    {monthlyReports.map((m, i) => (
+                      <MobileCard key={m.id || i} title={m.monthName} accent="emerald">
+                        <MobileCardRow label="Revenue" value={`₹ ${m.revenue.toLocaleString()}`} className="font-mono text-emerald-400 font-bold" />
+                        <MobileCardRow label="Sessions" value={m.totalSessions} className="font-mono" />
+                        <MobileCardRow label="Players" value={m.totalPlayers} className="font-mono text-blue-300" />
+                        <MobileCardRow label="Avg Daily Rev" value={`₹ ${m.avgDailyRevenue.toLocaleString()}`} className="font-mono text-gray-400" />
+                        <MobileCardRow label="Highest Day" value={m.highestDay} className="font-mono text-emerald-400" />
+                        <MobileCardRow label="Lowest Day" value={m.lowestDay} className="font-mono text-red-400" />
+                        <MobileCardRow label="Top Device" value={m.mostUsedDevice} className="text-white" />
+                      </MobileCard>
+                    ))}
+                  </MobileCardList>
+                )
+              )}
+
+              {subTab === 'YEARLY' && (
+                yearlyReports.length === 0 ? (
+                  <MobileCardEmpty icon={BarChart3}>No Yearly Reports Yet</MobileCardEmpty>
+                ) : (
+                  <MobileCardList>
+                    {yearlyReports.map((y, i) => (
+                      <MobileCard key={y.id || i} title={String(y.year)} accent="amber">
+                        <MobileCardRow label="Revenue" value={`₹ ${y.revenue.toLocaleString()}`} className="font-mono text-emerald-400 font-bold" />
+                        <MobileCardRow label="Sessions" value={y.totalSessions} className="font-mono" />
+                        <MobileCardRow label="Players" value={y.totalPlayers} className="font-mono text-blue-300" />
+                        <MobileCardRow label="Avg Daily Rev" value={`₹ ${y.avgDailyRevenue.toLocaleString()}`} className="font-mono text-gray-400" />
+                      </MobileCard>
+                    ))}
+                  </MobileCardList>
+                )
+              )}
+
+            </div>
+
             {/* Table Container */}
-            <div className="flex-1 overflow-x-auto min-h-[220px] pb-4">
-              
-              {/* CAFE REPORTS & ANALYTICS */}
-              {subTab === 'CAFE' && <CafeReportsSection />}
+            <div className="hidden md:block flex-1 overflow-x-auto min-h-[220px] pb-4">
 
               {/* DAILY TABLE */}
               {subTab === 'DAILY' && (
@@ -873,30 +1009,11 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
                           <td className="py-2.5 text-amber-300">{r.peakHour}</td>
                           <td className="py-2.5 text-white font-sans">{r.mostUsedDevice}</td>
                           <td className="py-2.5 text-gray-400 text-[10px] font-sans">
-                            Cash: ₹{(r.paymentBreakdown?.Cash || 0).toLocaleString()} / UPI: ₹{(r.paymentBreakdown?.UPI || 0).toLocaleString()}
-                            {r.paymentBreakdown?.['Credit Card'] ? ` / CC: ₹${r.paymentBreakdown['Credit Card'].toLocaleString()}` : ''}
-                            {r.paymentBreakdown?.['Debit Card'] ? ` / DC: ₹${r.paymentBreakdown['Debit Card'].toLocaleString()}` : ''}
+                            {paymentSummary(r)}
                           </td>
                           <td className="py-2.5 text-right font-cyber">
                             <div className="inline-flex gap-1">
-                              <button 
-                                onClick={() => setViewingReport(r)}
-                                className="px-2 py-1 rounded bg-purple-950/60 border border-purple-500/30 hover:border-purple-400 text-[10px] font-bold text-purple-300 flex items-center gap-0.5 cursor-pointer"
-                              >
-                                <Eye className="w-2.5 h-2.5" /> View
-                              </button>
-                              <button 
-                                onClick={handleExportPDF}
-                                className="px-2 py-1 rounded bg-red-950/60 border border-red-500/30 hover:border-red-400 text-[10px] font-bold text-red-300 flex items-center gap-0.5 cursor-pointer"
-                              >
-                                <Printer className="w-2.5 h-2.5" /> PDF
-                              </button>
-                              <button 
-                                onClick={() => exportSingleReportCSV(r)}
-                                className="px-2 py-1 rounded bg-emerald-950/60 border border-emerald-500/30 hover:border-emerald-400 text-[10px] font-bold text-emerald-300 flex items-center gap-0.5 cursor-pointer"
-                              >
-                                <FileSpreadsheet className="w-2.5 h-2.5" /> CSV
-                              </button>
+                              {renderDailyActions(r)}
                             </div>
                           </td>
                         </tr>
@@ -1032,7 +1149,7 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
 
           {/* Pagination Controls */}
           {subTab === 'DAILY' && totalEntries > 0 && (
-            <div className="flex items-center justify-between border-t border-white/10 pt-3 shrink-0 text-xs font-cyber">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-white/10 pt-3 shrink-0 text-xs font-cyber">
               <span className="text-gray-400">
                 Showing {Math.min(filteredDailyReports.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredDailyReports.length, currentPage * itemsPerPage)} of {totalEntries} entries
               </span>
@@ -1303,7 +1420,7 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
             <span>Daily Report Summary</span>
             <span className="text-[10px] font-mono text-purple-400">({formatDateString(operationalDate)})</span>
           </h4>
-          <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             <div className="p-2 rounded bg-slate-950/60 border border-white/5">
               <span className="text-[9px] text-gray-500 block uppercase">Revenue</span>
               <span className="text-sm font-mono font-bold text-emerald-400">₹{todayRevenue}</span>
@@ -1345,7 +1462,7 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
               ({weeklyReports[0] ? weeklyReports[0].weekRange.split(' - ')[0] : 'Current Week'})
             </span>
           </h4>
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
             <div className="p-2 rounded bg-slate-950/60 border border-white/5">
               <span className="text-[9px] text-gray-500 block uppercase">Total Revenue</span>
               <span className="text-sm font-mono font-bold text-emerald-400">₹{(weeklyReports[0]?.revenue || 0).toLocaleString()}</span>
@@ -1379,7 +1496,7 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
             <span>Monthly Report</span>
             <span className="text-[10px] font-mono text-emerald-400">(July 2026)</span>
           </h4>
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
             <div className="p-2 rounded bg-slate-950/60 border border-white/5">
               <span className="text-[9px] text-gray-500 block uppercase">Total Revenue</span>
               <span className="text-sm font-mono font-bold text-emerald-400">₹{(monthlyReports[0]?.revenue || 0).toLocaleString()}</span>
@@ -1411,11 +1528,11 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
 
       {/* 5. VIEW DETAILS DIALOG / MODAL (PREMIUM GLASSMORPHISM OVERLAY) */}
       {viewingReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm p-3 sm:p-4 animate-fadeIn">
           <div className="w-full max-w-4xl glass-panel bg-[#0C0B1B]/98 border border-purple-500/30 rounded-2xl p-5 shadow-2xl relative flex flex-col max-h-[90vh]">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3 shrink-0">
               <div>
                 <h3 className="font-cyber text-base font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-purple-400" />
@@ -1465,8 +1582,56 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
                   );
                 }
 
+                const sessionAmounts = (s) => {
+                  const finalAmt = Number(s.totalAmount || s.total_amount || 0);
+                  const extAmt = Number(s.extensionAmount || s.extension_amount || 0);
+                  const foodAmt = Number(s.snackTotal || s.food_total || 0);
+                  return { finalAmt, extAmt, origAmt: Number(s.originalAmount ?? (finalAmt - extAmt - foodAmt)) };
+                };
+
+                const paymentBadge = (s) => (
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-cyber font-bold ${
+                    s.paymentMethod === 'Cash'
+                      ? 'bg-amber-950/80 text-amber-400 border border-amber-500/20'
+                      : s.paymentMethod === 'Debit Card'
+                      ? 'bg-cyan-950/80 text-cyan-400 border border-cyan-500/20'
+                      : s.paymentMethod === 'Credit Card'
+                      ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/20'
+                      : (s.paymentMethod === 'Split' || s.paymentMethod === 'Split Payment')
+                      ? 'bg-fuchsia-950/80 text-fuchsia-300 border border-fuchsia-500/30'
+                      : 'bg-purple-950/80 text-purple-400 border border-purple-500/20'
+                  }`}>
+                    {(s.paymentMethod === 'Split' || s.paymentMethod === 'Split Payment') ? 'Split Payment' : (s.paymentMethod || 'Cash')}
+                  </span>
+                );
+
                 return (
-                  <table className="w-full text-left text-xs font-sans">
+                  <>
+                  {/* Mobile card list — the sub-md stand-in for the session table */}
+                  <MobileCardList>
+                    {sessions.map((s, idx) => {
+                      const { finalAmt, extAmt, origAmt } = sessionAmounts(s);
+                      return (
+                        <MobileCard
+                          key={idx}
+                          title={s.leaderName || s.customerName}
+                          subtitle={s.id || s.sessionId}
+                          badge={paymentBadge(s)}
+                        >
+                          <MobileCardRow label="Device" value={s.device || s.stationId} className="font-mono text-gray-300" />
+                          <MobileCardRow label="Duration" value={s.duration} className="font-mono" />
+                          <MobileCardRow label="Original" value={`₹ ${origAmt}`} className="font-mono text-gray-300" />
+                          <MobileCardRow label="Extension" value={extAmt > 0 ? `+₹ ${extAmt}` : '₹ 0'} className="font-mono text-purple-300 font-bold" />
+                          <MobileCardRow label="Final" value={`₹ ${finalAmt}`} className="font-mono text-emerald-400 font-bold" />
+                          <MobileCardRow label="Start" value={s.startTime} className="font-mono" />
+                          <MobileCardRow label="End" value={s.endTime || '-'} className="font-mono" />
+                          <MobileCardRow label="Notes" value={s.notes || 'None'} className="text-[10px] text-gray-500" />
+                        </MobileCard>
+                      );
+                    })}
+                  </MobileCardList>
+
+                  <table className="hidden md:table w-full text-left text-xs font-sans">
                     <thead>
                       <tr className="text-[10px] font-cyber text-gray-500 border-b border-white/10 uppercase">
                         <th className="pb-2">Session ID</th>
@@ -1521,6 +1686,7 @@ export default function ReportsModule({ subTab = 'DAILY', setSubTab }) {
                       })}
                     </tbody>
                   </table>
+                  </>
                 );
               })()}
             </div>

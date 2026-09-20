@@ -227,7 +227,7 @@ export default function GameLibraryManagerModule() {
     const collection = localGames[categoryKey];
     return (
       <div key={categoryKey} className="glass-panel p-4 rounded-2xl border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
           <div>
             <h3 className="font-cyber text-sm sm:text-base font-bold text-white uppercase tracking-wider">
               {collection.title}
@@ -334,8 +334,8 @@ export default function GameLibraryManagerModule() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#0C0B18] border border-red-500/50 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_30px_rgba(239,68,68,0.2)] animate-in zoom-in-95 duration-200">
+        <div className="absolute inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-[#0C0B18] border border-red-500/50 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_30px_rgba(239,68,68,0.2)] animate-in zoom-in-95 duration-200 max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center gap-3 text-red-400 mb-4">
               <AlertTriangle className="w-6 h-6" />
               <h3 className="font-cyber text-lg font-bold uppercase">Delete Game?</h3>
@@ -352,7 +352,7 @@ export default function GameLibraryManagerModule() {
       {/* Add / Edit Game Modal */}
       {isModalOpen && formData && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6 overflow-y-auto custom-scrollbar">
-          <div className="bg-[#0C0B18] border border-purple-500/40 rounded-3xl w-full max-w-3xl shadow-[0_0_50px_rgba(168,85,247,0.15)] flex flex-col my-auto relative animate-in zoom-in-95 duration-200">
+          <div className="bg-[#0C0B18] border border-purple-500/40 rounded-3xl w-full max-w-3xl shadow-[0_0_50px_rgba(168,85,247,0.15)] flex flex-col my-auto relative animate-in zoom-in-95 duration-200 max-h-[90dvh]">
             
             <div className="flex items-center justify-between p-5 border-b border-white/10 shrink-0">
               <h3 className="font-cyber text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">

@@ -5,6 +5,7 @@ import { cafeMenuService, normalizeCategoryKey } from '../../../services/cafeMen
 import { sessionService } from '../../../services/sessionService';
 import { useRealtime } from '../../../context/RealtimeContext';
 import CafeReportsSection from './CafeReportsSection';
+import { MobileCard, MobileCardList, MobileCardRow, MobileCardActions, MobileCardEmpty } from '../shared/MobileCard';
 import { 
   UtensilsCrossed, 
   Search, 
@@ -316,6 +317,51 @@ export default function CafeOrdersModule() {
   const activeCounterProductList = getProductsByCategory(counterForm.category);
   const activeCounterProd = activeCounterProductList[counterForm.productIndex] || activeCounterProductList[0];
   const counterEstimatedTotal = (activeCounterProd?.price || 20) * counterForm.quantity;
+
+  const renderOrderStatus = (ord) => (
+    <span className={`px-2.5 py-1 rounded-xl text-[10px] font-cyber font-bold border ${
+      ord.status === 'Pending'
+        ? 'bg-amber-950/80 text-amber-300 border-amber-500/50'
+        : ord.status === 'Preparing'
+        ? 'bg-blue-950/80 text-blue-300 border-blue-500/50'
+        : ord.status === 'Ready'
+        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50'
+        : 'bg-purple-950/80 text-purple-300 border-purple-500/50'
+    }`}>
+      {ord.status}
+    </span>
+  );
+
+  const renderOrderActions = (ord) => (
+    <>
+      <select
+        value={ord.status}
+        onChange={(e) => handleStatusChange(ord.id, e.target.value)}
+        className="px-2 py-1.5 sm:py-1 rounded-lg bg-[#0F1219] border border-white/10 text-[11px] font-cyber font-bold text-white outline-none cursor-pointer"
+      >
+        <option value="Pending">Pending</option>
+        <option value="Preparing">Preparing</option>
+        <option value="Ready">Ready</option>
+        <option value="Collected">Collected</option>
+      </select>
+
+      <button
+        onClick={() => setSelectedOrder(ord)}
+        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+        title="View Receipt"
+      >
+        <Eye className="w-3.5 h-3.5" />
+      </button>
+
+      <button
+        onClick={() => setDeleteModalOrder(ord)}
+        className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/30 transition-colors cursor-pointer flex items-center justify-center"
+        title="Delete Order"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </>
+  );
 
   return (
     <div className="space-y-4 font-sans text-gray-100 min-h-0 flex-1 flex flex-col custom-scrollbar overflow-y-auto pr-1">
@@ -715,8 +761,48 @@ export default function CafeOrdersModule() {
           </div>
         </div>
 
+        {/* Mobile card list — the sub-md stand-in for the orders table */}
+        {paginatedOrders.length === 0 ? (
+          <MobileCardEmpty icon={UtensilsCrossed}>No orders recorded matching filter criteria.</MobileCardEmpty>
+        ) : (
+          <MobileCardList>
+            {paginatedOrders.map((ord) => (
+              <MobileCard
+                key={ord.id}
+                title={ord.productName}
+                subtitle={ord.id}
+                badge={renderOrderStatus(ord)}
+                accent={ord.mode === 'SESSION' ? 'purple' : 'cyan'}
+                footer={<MobileCardActions>{renderOrderActions(ord)}</MobileCardActions>}
+              >
+                <MobileCardRow
+                  label="Session"
+                  value={
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                      ord.mode === 'SESSION'
+                        ? 'bg-purple-950/60 text-purple-300 border-purple-500/40'
+                        : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/40'
+                    }`}>
+                      {ord.sessionId || '-'}
+                    </span>
+                  }
+                />
+                <MobileCardRow
+                  label="Customer"
+                  value={ord.mode === 'SESSION' ? `${ord.stationId || 'Console'} — ${ord.customerName}` : ord.customerName}
+                  className="text-white font-medium"
+                />
+                <MobileCardRow label="Qty" value={ord.quantity} className="font-mono font-bold text-white" />
+                <MobileCardRow label="Unit Price" value={`₹ ${ord.price}`} className="font-mono text-amber-300" />
+                <MobileCardRow label="Total" value={`₹ ${ord.total}`} className="font-mono font-bold text-emerald-400" />
+                <MobileCardRow label="Time" value={ord.time} className="font-mono text-gray-400" />
+              </MobileCard>
+            ))}
+          </MobileCardList>
+        )}
+
         {/* ORDERS TABLE */}
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-white/10 text-gray-400 font-cyber uppercase tracking-wider text-[10px]">
@@ -774,47 +860,12 @@ export default function CafeOrdersModule() {
                     <td className="py-3 px-3 font-mono text-gray-400 text-[11px]">{ord.time}</td>
 
                     <td className="py-3 px-3">
-                      <span className={`px-2.5 py-1 rounded-xl text-[10px] font-cyber font-bold border ${
-                        ord.status === 'Pending'
-                          ? 'bg-amber-950/80 text-amber-300 border-amber-500/50'
-                          : ord.status === 'Preparing'
-                          ? 'bg-blue-950/80 text-blue-300 border-blue-500/50'
-                          : ord.status === 'Ready'
-                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50'
-                          : 'bg-purple-950/80 text-purple-300 border-purple-500/50'
-                      }`}>
-                        {ord.status}
-                      </span>
+                      {renderOrderStatus(ord)}
                     </td>
 
                     <td className="py-3 px-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <select
-                          value={ord.status}
-                          onChange={(e) => handleStatusChange(ord.id, e.target.value)}
-                          className="px-2 py-1 rounded-lg bg-[#0F1219] border border-white/10 text-[11px] font-cyber font-bold text-white outline-none cursor-pointer"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Preparing">Preparing</option>
-                          <option value="Ready">Ready</option>
-                          <option value="Collected">Collected</option>
-                        </select>
-
-                        <button 
-                          onClick={() => setSelectedOrder(ord)}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer"
-                          title="View Receipt"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-
-                        <button 
-                          onClick={() => setDeleteModalOrder(ord)}
-                          className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/30 transition-colors cursor-pointer"
-                          title="Delete Order"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {renderOrderActions(ord)}
                       </div>
                     </td>
                   </tr>
@@ -825,7 +876,7 @@ export default function CafeOrdersModule() {
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-gray-400">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-white/5 text-xs text-gray-400">
             <span>Page {currentPage} of {totalPages}</span>
             <div className="flex items-center gap-1">
               <button
@@ -849,8 +900,8 @@ export default function CafeOrdersModule() {
 
       {/* RECEIPT MODAL */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-sm glass-panel bg-[#0C0A1D]/95 border border-purple-500/40 rounded-2xl p-5 relative shadow-[0_0_50px_rgba(147,51,234,0.3)] space-y-4 font-sans text-gray-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-sm glass-panel bg-[#0C0A1D]/95 border border-purple-500/40 rounded-2xl p-5 relative shadow-[0_0_50px_rgba(147,51,234,0.3)] space-y-4 font-sans text-gray-100 max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="font-cyber text-sm font-bold text-white uppercase tracking-wider">
                 Receipt: <span className="text-purple-400">{selectedOrder.id}</span>
@@ -906,8 +957,8 @@ export default function CafeOrdersModule() {
       )}
       {/* DELETE CONFIRMATION MODAL */}
       {deleteModalOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-sm glass-panel bg-[#0C0A1D]/95 border border-red-500/40 rounded-2xl p-5 relative shadow-[0_0_50px_rgba(239,68,68,0.35)] space-y-4 font-sans text-gray-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-sm glass-panel bg-[#0C0A1D]/95 border border-red-500/40 rounded-2xl p-5 relative shadow-[0_0_50px_rgba(239,68,68,0.35)] space-y-4 font-sans text-gray-100 max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="font-cyber text-sm font-bold text-red-400 uppercase tracking-wider">
                 Delete this cafe order?

@@ -13,8 +13,8 @@ export default function SessionEndingAlertModal({ station, isOpen, onClose, onEx
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn font-sans">
-      <div className="w-full max-w-md glass-panel bg-[#0C0A1D]/95 border-2 border-amber-500/80 rounded-2xl p-6 relative shadow-[0_0_50px_rgba(245,158,11,0.35)] space-y-5 text-gray-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn font-sans">
+      <div className="w-full max-w-md glass-panel bg-[#0C0A1D]/95 border-2 border-amber-500/80 rounded-2xl p-6 relative shadow-[0_0_50px_rgba(245,158,11,0.35)] space-y-5 text-gray-100 max-h-[90dvh] overflow-y-auto custom-scrollbar">
         
         {/* TOP ALERT HEADER */}
         <div className="flex items-center justify-between border-b border-amber-500/30 pb-3.5">

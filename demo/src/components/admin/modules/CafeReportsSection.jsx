@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { cafeArchiveService } from '../../../services/cafeArchiveService';
+import { MobileCard, MobileCardList, MobileCardRow, MobileCardActions, MobileCardEmpty } from '../shared/MobileCard';
 import { cafeOrderService } from '../../../services/cafeOrderService';
 import { 
   UtensilsCrossed, 
@@ -214,7 +215,7 @@ export default function CafeReportsSection() {
         
         {/* LEFT 2 COLUMNS: DAILY ARCHIVES TABLE */}
         <div className="lg:col-span-2 glass-panel p-4 rounded-2xl border border-white/10 flex flex-col min-h-0 space-y-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5 shrink-0">
             <h4 className="font-cyber text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Calendar className="w-4 h-4 text-purple-400" /> Daily Cafe Archive Reports Log
             </h4>
@@ -223,7 +224,42 @@ export default function CafeReportsSection() {
             </span>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar border border-white/5 rounded-xl">
+          {/* Mobile card list — the sub-md stand-in for the archive table */}
+          <div className="md:hidden flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+            {((analytics.allHistoricalArchives || analytics.dailyArchives)?.length === 0) ? (
+              <MobileCardEmpty icon={Calendar}>No cafe archive logs found.</MobileCardEmpty>
+            ) : (
+              <MobileCardList>
+                {(analytics.allHistoricalArchives || analytics.dailyArchives)?.map(arch => (
+                  <MobileCard
+                    key={arch.id}
+                    title={arch.dateStr}
+                    badge={arch.isToday ? (
+                      <span className="text-[9px] bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">LIVE</span>
+                    ) : null}
+                    footer={
+                      <MobileCardActions>
+                        <button
+                          onClick={() => setViewingArchive(arch)}
+                          className="px-2 py-1.5 rounded bg-white/5 hover:bg-white/10 text-purple-300 hover:text-white text-[10px] font-cyber font-bold border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <Eye className="w-3 h-3" /> Orders
+                        </button>
+                      </MobileCardActions>
+                    }
+                  >
+                    <MobileCardRow label="Revenue" value={`₹ ${arch.totalRevenue?.toLocaleString()}`} className="font-mono text-emerald-400 font-bold" />
+                    <MobileCardRow label="Orders" value={arch.totalOrders} className="font-mono text-purple-300" />
+                    <MobileCardRow label="Completed" value={arch.completedOrders} className="font-mono text-emerald-300" />
+                    <MobileCardRow label="Cash / UPI" value={`₹${arch.cashRevenue || 0} / ₹${arch.upiRevenue || 0}`} className="font-mono text-gray-300" />
+                    <MobileCardRow label="Avg Bill" value={`₹ ${arch.averageOrderValue || 0}`} className="font-mono text-cyan-300" />
+                  </MobileCard>
+                ))}
+              </MobileCardList>
+            )}
+          </div>
+
+          <div className="hidden md:block flex-1 min-h-0 overflow-y-auto custom-scrollbar border border-white/5 rounded-xl">
             <table className="w-full text-left border-collapse text-xs font-sans">
               <thead className="sticky top-0 bg-[#090C1B] text-[10px] font-cyber uppercase tracking-wider text-gray-400 border-b border-white/10 z-10">
                 <tr>
@@ -281,7 +317,7 @@ export default function CafeReportsSection() {
 
         {/* RIGHT 1 COLUMN: PRODUCT SALES RANKING ANALYTICS */}
         <div className="glass-panel p-4 rounded-2xl border border-white/10 flex flex-col min-h-0 space-y-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5 shrink-0">
             <h4 className="font-cyber text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-pink-400" /> Product Sales Ranking
             </h4>
@@ -333,7 +369,7 @@ export default function CafeReportsSection() {
 
       {/* DETAILED ARCHIVED ORDERS AUDIT MODAL */}
       {viewingArchive && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md">
           <div className="w-full max-w-4xl glass-panel p-5 rounded-2xl border border-purple-500/40 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
               <div>
@@ -354,7 +390,34 @@ export default function CafeReportsSection() {
               </button>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar border border-white/10 rounded-xl">
+            {/* Mobile card list — the sub-md stand-in for the audit table */}
+            <div className="md:hidden flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+              <MobileCardList>
+                {viewingArchive.ordersList?.map((ord, i) => (
+                  <MobileCard
+                    key={i}
+                    title={ord.productName}
+                    subtitle={ord.orderId}
+                    accent="amber"
+                    badge={
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-cyber font-bold uppercase ${
+                        ord.status === 'Collected' || ord.status === 'Completed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30' : 'bg-amber-950 text-amber-400 border border-amber-500/30'
+                      }`}>
+                        {ord.status}
+                      </span>
+                    }
+                  >
+                    <MobileCardRow label="Mode" value={`${ord.mode} (${ord.stationId})`} className="font-mono text-gray-300" />
+                    <MobileCardRow label="Customer" value={ord.customerName} className="text-white" />
+                    <MobileCardRow label="Qty x Unit" value={`${ord.quantity} × ₹${ord.unitPrice}`} className="font-mono text-gray-300" />
+                    <MobileCardRow label="Total" value={`₹ ${ord.totalAmount}`} className="font-mono text-emerald-400 font-bold" />
+                    <MobileCardRow label="Payment" value={ord.paymentMethod} className="font-mono text-cyan-300" />
+                  </MobileCard>
+                ))}
+              </MobileCardList>
+            </div>
+
+            <div className="hidden md:block flex-1 min-h-0 overflow-y-auto custom-scrollbar border border-white/10 rounded-xl">
               <table className="w-full text-left border-collapse text-xs font-sans">
                 <thead className="sticky top-0 bg-[#090C1B] text-[10px] font-cyber uppercase tracking-wider text-gray-400 border-b border-white/10">
                   <tr>

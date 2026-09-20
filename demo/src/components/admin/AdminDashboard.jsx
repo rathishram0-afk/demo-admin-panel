@@ -30,7 +30,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Sparkles,
-  Gift
+  Gift,
+  Menu
 } from 'lucide-react';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
 
@@ -64,6 +65,8 @@ function AdminDashboardInner() {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [reportsSubTab, setReportsSubTab] = useState('DAILY');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Below `lg` the sidebar is an off-canvas drawer instead of an in-flow column
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Controller Metrics & Notifications
   const [controllerMetrics, setControllerMetrics] = useState({ totalControllers: 20, controllersInUse: 14, availableControllers: 6 });
@@ -125,6 +128,36 @@ function AdminDashboardInner() {
     }
   }, [currentToast, toastQueue]);
 
+  // Drawer: lock page scroll behind the scrim, close on Esc, and drop the
+  // drawer state when the viewport grows back to the static-sidebar layout.
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setIsDrawerOpen(false);
+    };
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setIsDrawerOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isDrawerOpen]);
+
+  const handleSelectTab = (tabId) => {
+    setActiveTab(tabId);
+    setIsDrawerOpen(false);
+  };
+
   const handleLogout = async () => {
     if (window.confirm('Log out from Admin Panel?')) {
       await logout();
@@ -158,6 +191,9 @@ function AdminDashboardInner() {
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Collapsing is a desktop-only affordance; the open drawer always shows labels.
+  const showCollapsed = isSidebarCollapsed && !isDrawerOpen;
 
   const navItems = [
     { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
@@ -213,11 +249,11 @@ function AdminDashboardInner() {
   };
 
   return (
-    <div className="flex h-screen bg-[#070A17] text-gray-100 font-sans overflow-hidden select-none relative">
+    <div className="flex h-dvh bg-[#070A17] text-gray-100 font-sans overflow-hidden select-none relative">
       
       {/* FLOATING TOAST NOTIFICATION OVERLAY (TOP-RIGHT, 5s AUTO CLOSE, SINGLE QUEUE) */}
       {currentToast && (
-        <div className="fixed top-20 right-6 z-50 animate-bounce-short font-sans max-w-sm">
+        <div className="fixed top-16 left-3 right-3 sm:top-20 sm:left-auto sm:right-6 sm:max-w-sm z-[60] animate-bounce-short font-sans">
           <div className={`p-4 rounded-2xl glass-panel border shadow-2xl backdrop-blur-xl flex items-start gap-3 relative transition-all duration-300 ${
             currentToast.type === 'ALERT'
               ? 'bg-[#1C1004]/95 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.3)]'
@@ -254,17 +290,38 @@ function AdminDashboardInner() {
         </div>
       )}
 
-      {/* SIDEBAR NAVIGATION */}
-      <aside 
-        className={`${
-          isSidebarCollapsed ? 'w-20' : 'w-64'
-        } transition-all duration-300 bg-[#0C091F]/90 backdrop-blur-xl border-r border-white/10 flex flex-col justify-between z-30 shrink-0 shadow-[4_0_25px_rgba(0,0,0,0.5)]`}
+      {/* DRAWER SCRIM — below lg only, closes the off-canvas sidebar */}
+      {isDrawerOpen && (
+        <div
+          onClick={() => setIsDrawerOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* SIDEBAR NAVIGATION — off-canvas drawer below lg, in-flow column at lg+ */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-[17rem] ${
+          // `invisible` keeps the off-screen drawer out of the tab order
+          isDrawerOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible'
+        } lg:static lg:translate-x-0 lg:z-30 lg:shrink-0 ${
+          isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+        } transition-[transform,visibility] duration-300 lg:transition-all bg-[#0C091F]/95 lg:bg-[#0C091F]/90 backdrop-blur-xl border-r border-white/10 flex flex-col justify-between shadow-[4_0_25px_rgba(0,0,0,0.5)]`}
       >
         <div className="flex flex-col h-full">
-          
+
           {/* Header */}
-          <div className="p-4 flex items-center justify-between border-b border-white/10 h-16">
-            {!isSidebarCollapsed && (
+          <div className="p-4 flex items-center justify-between border-b border-white/10 h-14 lg:h-16">
+            {/* Drawer close button — the collapse chevron is meaningless off-canvas */}
+            <button
+              onClick={() => setIsDrawerOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer order-last"
+              aria-label="Close navigation menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {!showCollapsed && (
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 border border-purple-500/40 flex items-center justify-center font-cyber font-black text-white text-xs shadow-[0_0_10px_rgba(168,85,247,0.4)]">
                   AP
@@ -277,7 +334,7 @@ function AdminDashboardInner() {
               </div>
             )}
 
-            {isSidebarCollapsed && (
+            {showCollapsed && (
               <div className="w-full flex justify-center">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 border border-purple-500/40 flex items-center justify-center font-cyber font-black text-white text-xs shadow-[0_0_10px_rgba(168,85,247,0.4)]">
                   AP
@@ -287,9 +344,10 @@ function AdminDashboardInner() {
 
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+              className="hidden lg:block p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+              aria-label={showCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              {showCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
           </div>
 
@@ -302,17 +360,17 @@ function AdminDashboardInner() {
               return (
                 <div key={item.id} className="w-full">
                   <button
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-cyber text-xs font-bold transition-all duration-200 cursor-pointer ${
+                    onClick={() => handleSelectTab(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-3 lg:py-2.5 rounded-xl font-cyber text-xs font-bold transition-all duration-200 cursor-pointer ${
                       isActive
                         ? 'bg-gradient-to-r from-purple-900/80 to-indigo-900/60 text-white border border-purple-500/50 shadow-[0_0_15px_rgba(147,51,234,0.35)]'
                         : 'text-gray-400 hover:text-white hover:bg-white/5'
-                    } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+                    } ${showCollapsed ? 'justify-center px-0' : ''}`}
                   >
                     <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-purple-400' : 'text-gray-400'}`} />
-                    {!isSidebarCollapsed && <span className="truncate tracking-wider">{item.label}</span>}
+                    {!showCollapsed && <span className="truncate tracking-wider">{item.label}</span>}
                   </button>
-                  {item.id === 'REPORTS' && isActive && !isSidebarCollapsed && (
+                  {item.id === 'REPORTS' && isActive && !showCollapsed && (
                     <div className="pl-8 mt-1.5 space-y-1 border-l border-purple-500/20 ml-5">
                       {[
                         { id: 'DAILY', label: 'Daily Reports' },
@@ -325,8 +383,9 @@ function AdminDashboardInner() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setReportsSubTab(sub.id);
+                            setIsDrawerOpen(false);
                           }}
-                          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-cyber tracking-wider transition-colors text-left cursor-pointer ${
+                          className={`w-full flex items-center gap-2 px-3 py-2 lg:py-1.5 rounded-lg text-[10px] font-cyber tracking-wider transition-colors text-left cursor-pointer ${
                             reportsSubTab === sub.id
                               ? 'text-purple-400 font-bold bg-purple-950/20'
                               : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -347,21 +406,21 @@ function AdminDashboardInner() {
             <button
               onClick={handleBackToWebsite}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-sans text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer ${
-                isSidebarCollapsed ? 'justify-center px-0' : ''
+                showCollapsed ? 'justify-center px-0' : ''
               }`}
             >
               <ArrowLeft className="w-4 h-4 text-cyan-400 shrink-0" />
-              {!isSidebarCollapsed && <span>Public Website</span>}
+              {!showCollapsed && <span>Public Website</span>}
             </button>
 
             <button
               onClick={handleLogout}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-cyber font-bold text-red-400 hover:text-red-300 hover:bg-red-950/30 border border-red-500/20 transition-all cursor-pointer ${
-                isSidebarCollapsed ? 'justify-center px-0' : ''
+                showCollapsed ? 'justify-center px-0' : ''
               }`}
             >
               <LogOut className="w-4 h-4 shrink-0" />
-              {!isSidebarCollapsed && <span className="uppercase tracking-wider">Logout</span>}
+              {!showCollapsed && <span className="uppercase tracking-wider">Logout</span>}
             </button>
           </div>
 
@@ -372,21 +431,30 @@ function AdminDashboardInner() {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#070A17]">
         
         {/* Top Navbar Header */}
-        <header className="h-16 px-6 bg-[#0C091F]/60 backdrop-blur-md border-b border-white/10 flex items-center justify-between z-20 shrink-0">
-          <div className="flex items-center gap-3">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            <div>
-              <h2 className="font-cyber text-sm font-bold text-white uppercase tracking-wider">
+        <header className="h-14 lg:h-16 px-3 sm:px-4 xl:px-6 bg-[#0C091F]/60 backdrop-blur-md border-b border-white/10 flex items-center justify-between gap-2 z-20 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Drawer trigger — replaces the sidebar below lg */}
+            <button
+              onClick={() => setIsDrawerOpen(true)}
+              className="lg:hidden p-2 -ml-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer shrink-0"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <ShieldCheck className="hidden sm:block w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="font-cyber text-xs sm:text-sm font-bold text-white uppercase tracking-wider truncate">
                 ADMIN PANEL
               </h2>
-              <span className="text-[10px] font-mono text-purple-400">
-                ACTIVE MODULE: {navItems.find(n => n.id === activeTab)?.label}
+              <span className="text-[10px] font-mono text-purple-400 block truncate">
+                <span className="hidden sm:inline">ACTIVE MODULE: </span>{navItems.find(n => n.id === activeTab)?.label}
               </span>
             </div>
           </div>
 
           {/* Header Controls */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 xl:gap-4 shrink-0">
             
             {/* Live Controller Allocation Bar */}
             <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-mono">
@@ -422,7 +490,7 @@ function AdminDashboardInner() {
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 mt-2 w-80 xl:w-96 glass-panel bg-[#0C0A1D]/98 border border-purple-500/30 rounded-2xl p-3.5 shadow-2xl z-50 space-y-2.5 font-sans backdrop-blur-xl">
+                <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 xl:w-96 glass-panel bg-[#0C0A1D]/98 border border-purple-500/30 rounded-2xl p-3.5 shadow-2xl z-50 space-y-2.5 font-sans backdrop-blur-xl">
                   <div className="flex items-center justify-between border-b border-white/10 pb-2">
                     <h3 className="font-cyber text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                       Notifications <span className="text-[10px] font-mono text-purple-400">({notifications.length})</span>
@@ -450,7 +518,7 @@ function AdminDashboardInner() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 max-h-72 overflow-y-auto custom-scrollbar pr-0.5">
+                  <div className="space-y-1.5 max-h-[60vh] sm:max-h-72 overflow-y-auto custom-scrollbar pr-0.5">
                     {notifications.length === 0 ? (
                       <div className="text-center py-6 space-y-1">
                         <Bell className="w-6 h-6 text-gray-600 mx-auto opacity-50" />
@@ -511,7 +579,7 @@ function AdminDashboardInner() {
         </header>
 
         {/* Dynamic Module Content View */}
-        <div className="flex-1 p-4 xl:p-6 overflow-hidden flex flex-col">
+        <div className="flex-1 p-3 sm:p-4 xl:p-6 overflow-y-auto lg:overflow-hidden flex flex-col custom-scrollbar">
           <ErrorBoundary>
             <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div></div>}>
               {renderModuleContent()}

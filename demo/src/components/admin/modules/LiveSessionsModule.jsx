@@ -358,9 +358,9 @@ export default function LiveSessionsModule() {
 
       {/* SHIFT SESSION MODAL */}
       {shiftModalStation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md glass-panel p-5 rounded-2xl border border-cyan-500/40 shadow-2xl space-y-4 text-left">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md glass-panel p-5 rounded-2xl border border-cyan-500/40 shadow-2xl space-y-4 text-left max-h-[90dvh] overflow-y-auto custom-scrollbar">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
               <h3 className="font-cyber font-bold text-white text-base flex items-center gap-2">
                 <Shuffle className="w-5 h-5 text-cyan-400" /> SHIFT SESSION
               </h3>
@@ -480,8 +480,8 @@ export default function LiveSessionsModule() {
 
       {/* END SESSION CONFIRMATION MODAL */}
       {endConfirmStation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-md bg-[#120817] border border-red-500/50 rounded-3xl p-6 relative shadow-[0_0_50px_rgba(239,68,68,0.3)] space-y-4 font-sans text-gray-100 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#120817] border border-red-500/50 rounded-3xl p-6 relative shadow-[0_0_50px_rgba(239,68,68,0.3)] space-y-4 font-sans text-gray-100 text-center max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <div className="w-12 h-12 rounded-2xl bg-red-950 border border-red-500/50 flex items-center justify-center text-red-400 mx-auto">
               <Square className="w-6 h-6 fill-red-400" />
             </div>
@@ -540,9 +540,9 @@ export default function LiveSessionsModule() {
 
       {/* COMBINED BILL FINAL RECEIPT MODAL */}
       {completedBillModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-md glass-panel bg-[#0C0A1D]/95 border border-purple-500/40 rounded-2xl p-6 relative shadow-[0_0_50px_rgba(147,51,234,0.35)] space-y-4 font-sans text-gray-100">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md glass-panel bg-[#0C0A1D]/95 border border-purple-500/40 rounded-2xl p-6 relative shadow-[0_0_50px_rgba(147,51,234,0.35)] space-y-4 font-sans text-gray-100 max-h-[90dvh] overflow-y-auto custom-scrollbar">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
               <div>
                 <span className="text-[10px] font-cyber font-bold text-emerald-400 uppercase tracking-widest block">
                   ✓ Session Completed Successfully
@@ -693,7 +693,7 @@ export default function LiveSessionsModule() {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <div>
                             <label className="text-[10px] font-cyber text-emerald-400 block mb-1">Cash (₹)</label>
                             <input

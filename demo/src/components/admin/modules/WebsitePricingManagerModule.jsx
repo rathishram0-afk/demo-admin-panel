@@ -86,7 +86,7 @@ export default function WebsitePricingManagerModule() {
                 <span className="font-cyber font-bold text-white text-sm tracking-wider">{device.platform}</span>
               </div>
               
-              <div className="flex-1 w-full grid grid-cols-3 gap-2">
+              <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {device.rates.map((rate, rateIdx) => {
                   const numValue = rate.price.replace(/[^0-9]/g, '');
                   return (

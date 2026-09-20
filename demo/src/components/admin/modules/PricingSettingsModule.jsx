@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { sessionService } from '../../../services/sessionService';
+import { MobileCard, MobileCardList } from '../shared/MobileCard';
 import { 
   Calendar, 
   Clock, 
@@ -118,6 +119,17 @@ export default function PricingSettingsModule() {
     }
   };
 
+  // Which duration columns the desktop matrix renders an input for, per device.
+  const DURATION_COLUMNS = [
+    { mins: 30, label: '30 MIN', devices: ['Racing Simulator', 'PlayStation 5'] },
+    { mins: 20, label: '20 MIN', devices: ['PS VR2'] },
+    { mins: 40, label: '40 MIN', devices: ['PS VR2'] },
+    { mins: 60, label: '1 HOUR', devices: null },
+    { mins: 90, label: '1.5 HOURS', devices: ['Racing Simulator'] },
+    { mins: 120, label: '2 HOURS', devices: ['PlayStation 5', 'PlayStation 4', 'PlayStation 2'] },
+    { mins: 180, label: '3 HOURS', devices: ['PlayStation 5', 'PlayStation 4', 'PlayStation 2'] },
+  ];
+
   const renderPricingTable = (tierKey, title, bannerColor, isWeekday) => {
     const tierData = pricingSettings[tierKey] || {};
 
@@ -138,7 +150,55 @@ export default function PricingSettingsModule() {
           </h3>
         </div>
 
-        <div className="p-3 xl:p-4 overflow-x-auto">
+        {/* Mobile card list — the sub-md stand-in for the rate matrix */}
+        <MobileCardList className="p-3">
+          {devices.map((dev) => {
+            const rates = tierData[dev.key] || {};
+            const columns = DURATION_COLUMNS.filter(
+              (c) => c.devices === null || c.devices.includes(dev.key)
+            );
+
+            return (
+              <MobileCard
+                key={dev.key}
+                accent="amber"
+                title={
+                  <span className="flex items-center gap-2.5">
+                    <span className="w-9 h-7 bg-black/40 rounded-lg p-0.5 border border-white/10 flex items-center justify-center shrink-0">
+                      <img
+                        src={dev.img}
+                        alt={dev.label}
+                        onError={(e) => { e.target.onerror = null; e.target.src = deviceImages.ps5; }}
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </span>
+                    {dev.label}
+                  </span>
+                }
+              >
+                <div className="grid grid-cols-2 gap-2 pt-1.5">
+                  {columns.map((c) => (
+                    <label key={c.mins} className="flex flex-col gap-1">
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-gray-500">{c.label}</span>
+                      <span className="flex items-center gap-0.5 text-amber-400 font-bold bg-[#070A17] border border-white/10 rounded-lg px-2 py-1.5 focus-within:border-amber-500/50">
+                        <span>₹</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={rates[c.mins] !== undefined && rates[c.mins] !== null ? rates[c.mins] : ''}
+                          onChange={(e) => handlePriceChange(tierKey, dev.key, c.mins, e.target.value)}
+                          className="w-full min-w-0 bg-transparent text-amber-400 font-mono font-bold outline-none"
+                        />
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </MobileCard>
+            );
+          })}
+        </MobileCardList>
+
+        <div className="hidden md:block p-3 xl:p-4 overflow-x-auto">
           <table className="w-full text-left border-collapse font-sans">
             <thead>
               <tr className="text-[10px] xl:text-[11px] font-cyber text-gray-400 border-b border-white/10 tracking-wider">
@@ -497,14 +557,39 @@ export default function PricingSettingsModule() {
         </div>
 
         <div className="glass-panel p-4 rounded-2xl border border-white/10 shadow-xl space-y-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
             <h3 className="font-cyber text-xs font-bold text-white tracking-wider uppercase">
               PRICING HISTORY
             </h3>
             <button className="text-[11px] font-sans text-purple-400 hover:text-purple-300 font-medium">View All</button>
           </div>
 
-          <div className="overflow-x-auto">
+          <MobileCardList>
+            {historyList.map((h) => (
+              <MobileCard
+                key={h.id}
+                title={h.id}
+                subtitle={h.type}
+                accent="emerald"
+                badge={
+                  <span className="px-2 py-0.5 rounded text-[9px] font-cyber font-bold bg-emerald-950/60 text-emerald-400 border border-emerald-500/40">
+                    {h.status}
+                  </span>
+                }
+              >
+                <div className="flex items-center justify-between gap-3 py-0.5 text-xs">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-gray-500">Updated By</span>
+                  <span className="text-gray-200">{h.updatedBy}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 py-0.5 text-xs">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-gray-500">Updated On</span>
+                  <span className="text-gray-400 font-mono text-[10px]">{h.date}</span>
+                </div>
+              </MobileCard>
+            ))}
+          </MobileCardList>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs font-sans">
               <thead>
                 <tr className="text-[10px] font-cyber text-gray-500 border-b border-white/10 uppercase">

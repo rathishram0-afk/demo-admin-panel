@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { sessionService, DEVICE_DURATIONS } from '../../../services/sessionService';
 import { useRealtime } from '../../../context/RealtimeContext';
+import { MobileCard, MobileCardList, MobileCardRow, MobileCardActions, MobileCardEmpty } from '../shared/MobileCard';
 import { 
   Zap, 
   Search, 
@@ -368,6 +369,58 @@ export default function WalkInSessionModule({ onNavigateTab }) {
   
   const scheduledTimeStr = isScheduled ? `${walkInForm.manualHour}:${walkInForm.manualMinute} ${walkInForm.manualAmPm}` : '';
 
+  const renderPaymentBadge = (row) => (
+    <span className={`px-2 py-0.5 rounded text-[10px] font-cyber font-bold border ${
+      row.paymentMethod === 'UPI'
+        ? 'bg-purple-950/60 text-purple-300 border-purple-500/40'
+        : row.paymentMethod === 'Debit Card'
+        ? 'bg-cyan-950/60 text-cyan-300 border-cyan-500/40'
+        : row.paymentMethod === 'Credit Card'
+        ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
+        : (row.paymentMethod === 'Split' || row.paymentMethod === 'Split Payment')
+        ? 'bg-fuchsia-950/60 text-fuchsia-300 border-fuchsia-500/40 shadow-[0_0_10px_rgba(217,70,239,0.3)]'
+        : 'bg-amber-950/60 text-amber-300 border-amber-500/40'
+    }`}>
+      {(row.paymentMethod === 'Split' || row.paymentMethod === 'Split Payment') ? 'Split Payment' : (row.paymentMethod || 'Cash')}
+    </span>
+  );
+
+  const renderSessionStatus = (row) => (
+    <span className={`px-2 py-0.5 rounded text-[10px] font-cyber font-bold border ${
+      row.sessionStatus === 'RUNNING'
+        ? 'bg-blue-950/60 text-blue-300 border-blue-500/40'
+        : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
+    }`}>
+      {row.sessionStatus}
+    </span>
+  );
+
+  const renderHistoryActions = (row) => (
+    <>
+      <button
+        onClick={() => setViewInvoice(row)}
+        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+        title="View Details"
+      >
+        <Eye className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={() => setViewInvoice(row)}
+        className="p-1.5 rounded-lg bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border border-purple-500/30 transition-colors cursor-pointer flex items-center justify-center"
+        title="Print Receipt"
+      >
+        <Printer className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={() => handleDeleteHistory(row.id)}
+        className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/30 transition-colors cursor-pointer flex items-center justify-center"
+        title="Delete Record"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </>
+  );
+
   return (
     <div className="space-y-4 font-sans text-gray-100 min-h-0 flex-1 flex flex-col custom-scrollbar overflow-y-auto pr-1">
       
@@ -613,7 +666,7 @@ export default function WalkInSessionModule({ onNavigateTab }) {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                           <label className="text-[10px] font-cyber text-emerald-400 block mb-1">Cash (₹)</label>
                           <input
@@ -913,8 +966,34 @@ export default function WalkInSessionModule({ onNavigateTab }) {
           </div>
         </div>
 
+        {/* Mobile card list — the sub-md stand-in for the history table */}
+        {paginatedHistory.length === 0 ? (
+          <MobileCardEmpty icon={Zap}>No walk-in sessions recorded for today.</MobileCardEmpty>
+        ) : (
+          <MobileCardList>
+            {paginatedHistory.map((row) => (
+              <MobileCard
+                key={row.id}
+                title={row.leaderName}
+                subtitle={row.id}
+                badge={renderSessionStatus(row)}
+                accent={row.sessionStatus === 'RUNNING' ? 'cyan' : 'emerald'}
+                footer={<MobileCardActions>{renderHistoryActions(row)}</MobileCardActions>}
+              >
+                <MobileCardRow label="Device" value={row.device} className="font-mono text-gray-300" />
+                <MobileCardRow label="Players" value={row.players} className="font-mono" />
+                <MobileCardRow label="Duration" value={row.duration} className="font-mono" />
+                <MobileCardRow label="Rate / Plr" value={`₹ ${row.pricePerPlayer || 100}`} className="font-mono text-amber-300" />
+                <MobileCardRow label="Total Billed" value={`₹ ${row.totalAmount}`} className="font-mono font-bold text-emerald-400" />
+                <MobileCardRow label="Payment" value={renderPaymentBadge(row)} />
+                <MobileCardRow label="Start Time" value={row.startTime} className="font-mono text-gray-400" />
+              </MobileCard>
+            ))}
+          </MobileCardList>
+        )}
+
         {/* History Table */}
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs font-sans">
             <thead>
               <tr className="border-b border-white/10 text-gray-400 font-cyber text-[11px] uppercase tracking-wider bg-white/[0.02]">
@@ -949,53 +1028,15 @@ export default function WalkInSessionModule({ onNavigateTab }) {
                     <td className="py-3 px-3 font-mono text-amber-300">₹ {row.pricePerPlayer || 100}</td>
                     <td className="py-3 px-3 font-mono font-bold text-emerald-400">₹ {row.totalAmount}</td>
                     <td className="py-3 px-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-cyber font-bold border ${
-                        row.paymentMethod === 'UPI'
-                          ? 'bg-purple-950/60 text-purple-300 border-purple-500/40'
-                          : row.paymentMethod === 'Debit Card'
-                          ? 'bg-cyan-950/60 text-cyan-300 border-cyan-500/40'
-                          : row.paymentMethod === 'Credit Card'
-                          ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
-                          : (row.paymentMethod === 'Split' || row.paymentMethod === 'Split Payment')
-                          ? 'bg-fuchsia-950/60 text-fuchsia-300 border-fuchsia-500/40 shadow-[0_0_10px_rgba(217,70,239,0.3)]'
-                          : 'bg-amber-950/60 text-amber-300 border-amber-500/40'
-                      }`}>
-                        {(row.paymentMethod === 'Split' || row.paymentMethod === 'Split Payment') ? 'Split Payment' : (row.paymentMethod || 'Cash')}
-                      </span>
+                      {renderPaymentBadge(row)}
                     </td>
                     <td className="py-3 px-3 font-mono text-gray-400">{row.startTime}</td>
                     <td className="py-3 px-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-cyber font-bold border ${
-                        row.sessionStatus === 'RUNNING'
-                          ? 'bg-blue-950/60 text-blue-300 border-blue-500/40'
-                          : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
-                      }`}>
-                        {row.sessionStatus}
-                      </span>
+                      {renderSessionStatus(row)}
                     </td>
                     <td className="py-3 px-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button 
-                          onClick={() => setViewInvoice(row)}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer"
-                          title="View Details"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button 
-                          onClick={() => setViewInvoice(row)}
-                          className="p-1.5 rounded-lg bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border border-purple-500/30 transition-colors cursor-pointer"
-                          title="Print Receipt"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteHistory(row.id)}
-                          className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/30 transition-colors cursor-pointer"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {renderHistoryActions(row)}
                       </div>
                     </td>
                   </tr>
@@ -1031,8 +1072,8 @@ export default function WalkInSessionModule({ onNavigateTab }) {
 
       {/* VIEW / PRINT INVOICE MODAL */}
       {viewInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-sm glass-panel bg-[#0C0A1D]/95 border border-purple-500/40 rounded-2xl p-5 relative shadow-[0_0_50px_rgba(147,51,234,0.3)] space-y-4 font-sans text-gray-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-sm glass-panel bg-[#0C0A1D]/95 border border-purple-500/40 rounded-2xl p-5 relative shadow-[0_0_50px_rgba(147,51,234,0.3)] space-y-4 font-sans text-gray-100 max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="font-cyber text-sm font-bold text-white uppercase tracking-wider">
                 Session Receipt: <span className="text-purple-400">{viewInvoice.id}</span>

@@ -154,8 +154,8 @@ export default function ExtendSessionModal({ station, isOpen, onClose, onConfirm
   };
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-md glass-panel bg-[#0C0A1D]/95 border border-purple-500/50 rounded-3xl p-5 sm:p-6 relative shadow-[0_0_50px_rgba(147,51,234,0.35)] space-y-4 font-sans text-gray-100">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-md glass-panel bg-[#0C0A1D]/95 border border-purple-500/50 rounded-3xl p-5 sm:p-6 relative shadow-[0_0_50px_rgba(147,51,234,0.35)] space-y-4 font-sans text-gray-100 max-h-[90dvh] overflow-y-auto custom-scrollbar">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -218,7 +218,7 @@ export default function ExtendSessionModal({ station, isOpen, onClose, onConfirm
               QUICK EXTENSION
             </label>
 
-            <div className={`grid gap-2 ${isSpecialPlatform ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+            <div className={`grid gap-2 ${isSpecialPlatform ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
               {presetOptions.map(opt => {
                 const isSelected = !useCustom && presetMins === opt.mins;
                 const dynamicPrice = getExtensionCost(opt.mins);

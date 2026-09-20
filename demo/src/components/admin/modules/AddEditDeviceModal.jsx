@@ -174,7 +174,7 @@ export default function AddEditDeviceModal({ device, isOpen, onClose, onSaved })
   };
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="w-full max-w-lg glass-panel bg-[#0C0A1D]/95 border border-purple-500/50 rounded-3xl p-5 sm:p-6 relative shadow-[0_0_50px_rgba(147,51,234,0.35)] space-y-4 font-sans text-gray-100 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar">
         
         {/* Header */}

@@ -376,7 +376,7 @@ export default function DevicesModule() {
                   </div>
 
                   {/* Device Action Buttons */}
-                  <div className="pt-2 border-t border-white/10 grid grid-cols-4 gap-1 text-[10px] font-cyber font-bold">
+                  <div className="pt-2 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-1 text-[10px] font-cyber font-bold">
                     <button
                       onClick={() => handleOpenEdit(st)}
                       className="py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white flex items-center justify-center gap-1 cursor-pointer transition-colors"
@@ -431,8 +431,8 @@ export default function DevicesModule() {
 
       {/* DELETE DEVICE CONFIRMATION MODAL */}
       {deleteConfirmState.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-md bg-[#18090E] border border-red-500/50 rounded-3xl p-6 relative shadow-[0_0_50px_rgba(239,68,68,0.35)] space-y-4 font-sans text-gray-100 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#18090E] border border-red-500/50 rounded-3xl p-6 relative shadow-[0_0_50px_rgba(239,68,68,0.35)] space-y-4 font-sans text-gray-100 text-center max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <div className="w-12 h-12 rounded-2xl bg-red-950 border border-red-500/50 flex items-center justify-center text-red-400 mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>

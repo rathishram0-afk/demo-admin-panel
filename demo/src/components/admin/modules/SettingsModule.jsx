@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { settingsService } from '../../../services/settingsService';
+import { MobileCard, MobileCardList, MobileCardRow, MobileCardActions } from '../shared/MobileCard';
 import { sessionService } from '../../../services/sessionService';
 import { useSiteContext } from '../../../context/SiteContext';
 import { Settings, Save, Shield, Key, Building, Clock, Check, Volume2, VolumeX, BellRing, Play, Palette, Sliders, HardDrive, Download, Upload, RefreshCw, Plus, Trash2, Edit2, UserPlus, FileDown, FileUp } from 'lucide-react';
@@ -265,7 +266,7 @@ export default function SettingsModule() {
           {/* BUSINESS HOURS TAB */}
           {activeTab === 'HOURS' && (
             <form onSubmit={handleHoursSave} className="space-y-5 animate-fade-in">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                 <h3 className="font-cyber text-sm font-black text-white uppercase tracking-wider">
                   Operating Hours & Schedules
                 </h3>
@@ -326,7 +327,7 @@ export default function SettingsModule() {
           {/* SOUNDS TAB */}
           {activeTab === 'SOUNDS' && (
             <div className="space-y-5 animate-fade-in">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                 <h3 className="font-cyber text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
                   <BellRing className="w-4 h-4 text-purple-400" /> Audio Engine Configuration
                 </h3>
@@ -474,13 +475,42 @@ export default function SettingsModule() {
           {/* ADMIN MANAGEMENT TAB */}
           {activeTab === 'ADMINS' && (
             <div className="space-y-5 animate-fade-in">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                 <h3 className="font-cyber text-sm font-black text-white uppercase tracking-wider">Admin Management</h3>
                 <button className="px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 text-xs font-cyber font-bold flex items-center gap-2 hover:bg-cyan-500/30 transition-all">
                   <UserPlus className="w-4 h-4" /> Add Admin
                 </button>
               </div>
-              <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-900/50">
+              {/* Mobile card list — the sub-md stand-in for the admin table */}
+              <MobileCardList>
+                {(adminPrefs.admins || []).map((admin, i) => (
+                  <MobileCard
+                    key={i}
+                    title={admin.name}
+                    subtitle={admin.email}
+                    accent={admin.role === 'Super Admin' ? 'purple' : 'cyan'}
+                    badge={
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-cyber font-bold ${admin.role === 'Super Admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                        {admin.role}
+                      </span>
+                    }
+                    footer={
+                      <MobileCardActions>
+                        <button className="p-2 rounded-lg bg-slate-800 text-gray-400 hover:text-white transition-colors flex items-center justify-center">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button className="p-2 rounded-lg bg-red-950/50 text-red-400 hover:bg-red-900/80 transition-colors flex items-center justify-center">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </MobileCardActions>
+                    }
+                  >
+                    <MobileCardRow label="Status" value={admin.status} className="text-emerald-400 font-bold" />
+                  </MobileCard>
+                ))}
+              </MobileCardList>
+
+              <div className="hidden md:block overflow-x-auto rounded-xl border border-white/10 bg-slate-900/50">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-white/10 bg-slate-950/50 text-[10px] font-cyber text-gray-400 uppercase">
