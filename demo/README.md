@@ -1,16 +1,76 @@
-# React + Vite
+# G-FORCE Gaming Hub — Admin Panel Demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A standalone, self-contained demo of a gaming cafe management panel (sessions,
+bookings, memberships, cafe orders, reports) plus the public marketing site.
 
-Currently, two official plugins are available:
+React 19 + Vite + Tailwind 4 + React Router.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Running locally
 
-## React Compiler
+```bash
+cd demo
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Route            | What it is                                      |
+| ---------------- | ----------------------------------------------- |
+| `/`, `/admin`    | Admin panel (auth is bypassed in demo mode)     |
+| `/admin/login`   | Login screen                                     |
+| `/website`       | Public marketing site                            |
 
-## Expanding the Oxlint configuration
+## No backend
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+`src/services/supabase.js` is a **localStorage-backed Supabase emulator**. It
+makes zero network calls; the `.env` values are inert placeholders. Every
+visitor gets their own private copy of the data in their own browser, and
+clearing site data resets it.
+
+`src/data/demoSeed.js` generates ~14 months of trading on first load: ~1,650
+walk-in sessions, ~1,570 cafe orders, bookings, memberships, live sessions and
+notifications. It is generated relative to *now*, so live session timers count
+down correctly and report dates stay current whenever the demo is opened. A
+seeded PRNG makes it identical on every load.
+
+Reports and cafe daily archives are deliberately **not** seeded — the app
+derives both by re-aggregating sessions and orders by business date, so storing
+them would risk numbers that disagree with their own source rows.
+
+Two constraints worth knowing before changing the seed:
+
+- Chrome bills localStorage in **UTF-16**, so every JSON character costs two
+  bytes against a ~5 MB quota, and `saveTable` swallows quota errors silently.
+  An oversized seed appears to work and then vanishes on reload. The current
+  seed is ~3.3 MB UTF-16, leaving ~34% headroom.
+- Volume is on a growth curve (full density for the recent 60 days, decaying to
+  10% at the start of the history). That is what makes 14 months fit.
+
+**Reset All Data** in Reports clears transactional data and restores the seed.
+
+## Deploying
+
+The repo has config for both hosts. The app lives in `demo/`, not the repo root.
+
+### Vercel
+
+`vercel.json` at the **repo root** sets the install/build commands, the output
+directory and the SPA rewrite, so importing the repo and deploying works with
+no project settings to change.
+
+> Leave **Root Directory** at the repository root. If you point it at `demo/`
+> instead, Vercel stops reading the root `vercel.json` and deep links will 404.
+
+The rewrite excludes `/assets/`:
+
+```json
+{ "source": "/((?!assets/).*)", "destination": "/index.html" }
+```
+
+Without that exclusion a missing hashed chunk after a redeploy would be served
+`index.html` instead of a 404, producing a confusing `Unexpected token '<'`
+error rather than a clean cache miss.
+
+### Netlify
+
+`netlify.toml` and `public/_redirects` already cover this. Set the base
+directory to `demo`; publish directory `dist`, build `npm run build`.
