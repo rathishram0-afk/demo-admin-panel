@@ -5,6 +5,7 @@
  */
 
 import { GAMES_DATA, MENU_DATA, PRICING_DATA } from '../data/gamingData.js';
+import { buildDemoData, NOTIFICATIONS_STORAGE_KEY } from '../data/demoSeed.js';
 
 const DEMO_STORAGE_PREFIX = 'gforce_demo_table_';
 
@@ -191,25 +192,94 @@ class LocalDatabase {
     this.memoryTables = new Map();
     this.subscribers = new Set();
     this.initDefaultTables();
+    this.seedNotifications();
+  }
+
+  /**
+   * The generated demo dataset, built lazily and only once per page load.
+   * Generation is relative to "now", so live session timers and report dates
+   * are always current. `ensureTable` only calls these factories when the
+   * table is absent from localStorage, so a returning visitor keeps their own
+   * edits rather than having them overwritten.
+   */
+  getDemoSeed() {
+    if (!this._demoSeed) this._demoSeed = buildDemoData();
+    return this._demoSeed;
   }
 
   initDefaultTables() {
-    // Transactional tables start 100% clean
-    this.ensureTable('walkin_sessions', () => []);
-    this.ensureTable('cafe_orders', () => []);
+    // Transactional tables are seeded with a demo trading history
+    this.ensureTable('walkin_sessions', () => this.getDemoSeed().walkinSessions);
+    this.ensureTable('cafe_orders', () => this.getDemoSeed().cafeOrders);
+    this.ensureTable('memberships', () => this.getDemoSeed().memberships);
+    this.ensureTable('bookings', () => this.getDemoSeed().bookings);
+    this.ensureTable('activity_logs', () => this.getDemoSeed().activityLogs);
+
+    // Left empty on purpose: cafeArchiveService rebuilds daily archives from
+    // cafe_orders for any past business date, so seeding rows here could only
+    // disagree with the orders they summarise.
     this.ensureTable('cafe_daily_archives', () => []);
-    this.ensureTable('memberships', () => []);
-    this.ensureTable('bookings', () => []);
-    this.ensureTable('activity_logs', () => []);
 
     // Configuration / asset tables populated for demonstration
-    this.ensureTable('devices', () => INITIAL_DEVICES);
+    this.ensureTable('devices', () => this.seedDeviceStatuses(INITIAL_DEVICES));
     this.ensureTable('cafe_menu', getInitialMenuRows);
     this.ensureTable('game_library', getInitialGameRows);
     this.ensureTable('pricing_settings', getInitialPricingRows);
     this.ensureTable('offers', () => DEFAULT_OFFERS);
     this.ensureTable('settings', () => INITIAL_SETTINGS);
     this.ensureTable('website_content', () => INITIAL_WEBSITE_CONTENT);
+  }
+
+  /** Mark the stations that the seeded live sessions are occupying. */
+  seedDeviceStatuses(devices) {
+    const occupied = new Set(this.getDemoSeed().occupiedDeviceCodes || []);
+    return devices.map(d =>
+      occupied.has(d.device_code) ? { ...d, status: 'RUNNING' } : d
+    );
+  }
+
+  /**
+   * Rebuild the demo dataset from scratch, discarding whatever is stored.
+   * Used by "Reset All Data" so the demo returns to a populated state rather
+   * than a set of empty screens.
+   */
+  reseedDemoData() {
+    this._demoSeed = buildDemoData();
+    const seed = this._demoSeed;
+
+    this.replaceTable('walkin_sessions', seed.walkinSessions);
+    this.replaceTable('cafe_orders', seed.cafeOrders);
+    this.replaceTable('memberships', seed.memberships);
+    this.replaceTable('bookings', seed.bookings);
+    this.replaceTable('activity_logs', seed.activityLogs);
+    this.replaceTable('cafe_daily_archives', []);
+    this.replaceTable('devices', this.seedDeviceStatuses(INITIAL_DEVICES));
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(
+          NOTIFICATIONS_STORAGE_KEY,
+          JSON.stringify(seed.notifications)
+        );
+      }
+    } catch (e) {}
+  }
+
+  replaceTable(tableName, rows) {
+    this.memoryTables.set(tableName, rows);
+    this.saveTable(tableName, rows);
+  }
+
+  /** Notifications live in a plain localStorage key rather than a table. */
+  seedNotifications() {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      if (localStorage.getItem(NOTIFICATIONS_STORAGE_KEY)) return;
+      localStorage.setItem(
+        NOTIFICATIONS_STORAGE_KEY,
+        JSON.stringify(this.getDemoSeed().notifications)
+      );
+    } catch (e) {}
   }
 
   ensureTable(tableName, defaultFactory) {
@@ -662,6 +732,11 @@ export const supabase = {
 
   async rpc(fnName, params) {
     return { data: null, error: null };
+  },
+
+  /** Demo-emulator only: restore the generated demo dataset. */
+  reseedDemoData() {
+    localDb.reseedDemoData();
   },
 
   auth: {

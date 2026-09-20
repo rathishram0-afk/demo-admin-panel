@@ -312,17 +312,29 @@ export const adminDataService = {
         localStorage.setItem('gforce_operational_date', sessionService.getBusinessDate(new Date()));
       }
       
+      // Restore the generated demo dataset so reset lands on a populated
+      // panel rather than a set of empty screens.
+      if (typeof supabase.reseedDemoData === 'function') {
+        supabase.reseedDemoData();
+      }
+
       // Seed a fresh activity
       const now = new Date();
       const resetActivity = [{
         id: 'act_' + Date.now(),
         type: 'SYSTEM_RESET',
         title: 'ERP Reset',
-        detail: 'All demo and transactional data erased',
+        detail: 'Transactional data cleared and demo dataset restored',
         time: 'Just now',
         date: now.toISOString().split('T')[0]
       }];
       setItem(STORAGE_KEYS.ACTIVITIES, resetActivity);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gforce_dashboard_updated'));
+        window.dispatchEvent(new CustomEvent('gforce_session_changed', { detail: { eventType: 'RESEED' } }));
+        window.dispatchEvent(new CustomEvent('gforce_order_updated', { detail: { eventType: 'RESEED' } }));
+      }
 
       return true;
     } catch (e) {
