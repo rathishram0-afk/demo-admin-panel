@@ -20,7 +20,22 @@
 
 import { MENU_DATA } from './gamingData.js';
 
-const HISTORY_DAYS = 90;
+const HISTORY_DAYS = 425; // ~14 months, so the Yearly tab has two years to compare
+
+// Browser localStorage is the hard constraint here: Chrome accounts for it in
+// UTF-16, so every character of JSON costs two bytes against a ~5 MB quota,
+// and supabase.js:saveTable swallows quota errors silently - an oversized seed
+// would appear to work, then vanish on the next reload.
+//
+// 14 months at today's trading density does not fit. Rather than truncate the
+// history, older months are modelled at lower volume on a growth curve, which
+// is both realistic for a cafe that has been ramping up and keeps the Monthly
+// and Yearly tabs meaningful. The most recent RECENT_FULL_DAYS run at full
+// density so the Daily tab and dashboard are unaffected.
+const RECENT_FULL_DAYS = 60;
+const OLDEST_VOLUME_FACTOR = 0.10;
+const GROWTH_CURVE_EXPONENT = 2; // convex: slow early growth, accelerating recently
+
 const SEED = 0x5f3a91c7;
 
 /* ------------------------------------------------------------------ random */
@@ -74,6 +89,11 @@ function shiftDateStr(dateStr, deltaDays) {
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + deltaDays);
   return dt.toISOString().slice(0, 10);
+}
+
+/** ISO timestamp at second resolution - the millis are noise on every row. */
+function iso(date) {
+  return `${date.toISOString().slice(0, 19)}Z`;
 }
 
 /** An exact instant at HH:MM IST on the given business date. */
@@ -186,23 +206,43 @@ function splitBreakdownFor(amount) {
   return { cash, upi, card: 0 };
 }
 
-function pricingSnapshot({ pricePerPlayer, durationMins, isWeekend, method, isPrepaid, amount }) {
+/**
+ * Only the snapshot fields something actually reads are stored.
+ * A grep over services + admin components shows reads of isPrepaid,
+ * paymentMethod, hourlyPrice and the split amounts; pricePerPlayer,
+ * durationMinutes, tierName, isWeekend and paymentStatus are written by the
+ * live code path but never read back, and at thousands of rows those keys are
+ * pure quota cost.
+ */
+function pricingSnapshot({ pricePerPlayer, method, isPrepaid, amount }) {
   const isSplit = method === 'Split';
   const split = isSplit ? splitBreakdownFor(amount) : null;
   return {
     hourlyPrice: pricePerPlayer,
-    pricePerPlayer,
-    durationMinutes: durationMins,
-    tierName: isWeekend ? 'Weekend Pricing' : 'Weekday Pricing',
-    isWeekend,
     isPrepaid,
-    paymentStatus: isPrepaid ? 'Prepaid' : 'Pay at Checkout',
     paymentMethod: method,
-    splitBreakdown: split,
-    cashAmount: split ? split.cash : null,
-    upiAmount: split ? split.upi : null,
-    cardAmount: split ? split.card : null,
+    ...(split
+      ? { splitBreakdown: split, cashAmount: split.cash, upiAmount: split.upi, cardAmount: split.card }
+      : {}),
   };
+}
+
+/**
+ * Trading volume for a day `back` days ago, as a fraction of today's density.
+ *
+ * The most recent RECENT_FULL_DAYS are at full volume; before that the curve
+ * falls away to OLDEST_VOLUME_FACTOR at the start of the history. This models
+ * a cafe that has been growing, and is what makes 14 months fit the browser
+ * storage budget - see the note beside the constants.
+ */
+function volumeFactor(back) {
+  if (back <= RECENT_FULL_DAYS) return 1;
+  const span = HISTORY_DAYS - RECENT_FULL_DAYS;
+  const age = (back - RECENT_FULL_DAYS) / span; // 0 = just before the full window, 1 = oldest
+  // Convex rather than linear: a linear ramp averages ~0.55 of full volume,
+  // which is still far too many rows for the storage budget. Squaring gives a
+  // ~0.40 average and the shape of a business that grew slowly then took off.
+  return OLDEST_VOLUME_FACTOR + (1 - OLDEST_VOLUME_FACTOR) * Math.pow(1 - age, GROWTH_CURVE_EXPONENT);
 }
 
 /** Pick a plausible start hour: mostly evening peak, some afternoon. */
@@ -249,23 +289,26 @@ function buildCompletedSession(dateStr, seq) {
     device_type: station.zone,
     player_count: players,
     planned_duration: durationMins,
-    extended_minutes: extendedMinutes,
-    extension_amount: extensionAmount,
     hourly_price: pricePerPlayer,
     gaming_charge: gamingCharge,
     total_amount: totalAmount,
-    original_gaming_amount: gamingCharge,
     payment_status: 'Paid',
     payment_method: method === 'Debit Card' || method === 'Credit Card' ? 'Card' : method,
     session_status: 'Completed',
-    pricing_snapshot: pricingSnapshot({
-      pricePerPlayer, durationMins, isWeekend: weekend, method, isPrepaid, amount: totalAmount,
-    }),
-    member_discount_info: null,
-    notes: extendedMinutes ? `Extended by ${extendedMinutes} mins on request` : null,
-    start_time: start.toISOString(),
-    actual_end_time: end.toISOString(),
-    created_at: start.toISOString(),
+    pricing_snapshot: pricingSnapshot({ pricePerPlayer, method, isPrepaid, amount: totalAmount }),
+    start_time: iso(start),
+    actual_end_time: iso(end),
+    // created_at is load-bearing: getWalkInHistory() orders on it.
+    created_at: iso(start),
+    // Extension fields are omitted entirely when unused - every reader coerces
+    // with `|| 0`, and at this row count the empty keys cost real quota.
+    ...(extendedMinutes
+      ? {
+          extended_minutes: extendedMinutes,
+          extension_amount: extensionAmount,
+          notes: `Extended by ${extendedMinutes} mins on request`,
+        }
+      : {}),
   };
 }
 
@@ -303,7 +346,7 @@ function buildCafeOrder({ dateStr, seq, product, session, status, now }) {
     status,
     revenue_counted: status === 'Collected',
     image_url: product.image,
-    created_at: (placedAt > now ? now : placedAt).toISOString(),
+    created_at: iso(placedAt > now ? now : placedAt),
   };
 }
 
@@ -343,28 +386,21 @@ function buildLiveSessions(todayStr, now) {
       device_type: station.zone,
       player_count: players,
       planned_duration: spec.durationMins,
-      extended_minutes: 0,
-      extension_amount: 0,
       hourly_price: pricePerPlayer,
       gaming_charge: gamingCharge,
       total_amount: gamingCharge,
-      original_gaming_amount: gamingCharge,
       payment_status: isPrepaid ? 'Paid' : 'Pending',
       payment_method: isPrepaid ? (method === 'Debit Card' || method === 'Credit Card' ? 'Card' : method) : null,
       session_status: spec.status,
-      pricing_snapshot: pricingSnapshot({
-        pricePerPlayer, durationMins: spec.durationMins, isWeekend: weekend,
-        method, isPrepaid, amount: gamingCharge,
-      }),
-      member_discount_info: null,
-      start_time: start.toISOString(),
-      created_at: start.toISOString(),
+      pricing_snapshot: pricingSnapshot({ pricePerPlayer, method, isPrepaid, amount: gamingCharge }),
+      start_time: iso(start),
+      created_at: iso(start),
     };
 
     // A paused session records where the clock stopped in expected_end_time,
     // which is how mapStations() freezes its elapsed counter.
     if (spec.status === 'Paused') {
-      row.expected_end_time = new Date(start.getTime() + spec.elapsedMins * 60000).toISOString();
+      row.expected_end_time = iso(new Date(start.getTime() + spec.elapsedMins * 60000));
     }
     return row;
   });
@@ -412,7 +448,7 @@ function buildBookings(todayStr) {
       payment_method: status === 'Completed' || status === 'Converted' ? pickWeighted(PAYMENT_METHODS) : null,
       payment_status: status === 'Completed' || status === 'Converted' ? 'Paid' : 'Unpaid',
       booking_status: status,
-      created_at: istAt(shiftDateStr(todayStr, createdOffset), randInt(9, 21), randInt(0, 59)).toISOString(),
+      created_at: iso(istAt(shiftDateStr(todayStr, createdOffset), randInt(9, 21), randInt(0, 59))),
     });
   });
 
@@ -463,7 +499,7 @@ function buildMemberships(todayStr) {
         payment_status: settled ? 'Paid' : 'Pending',
         payment_mode: pick(['Cash', 'UPI', 'GPay', 'Debit Card']),
         expiry_date: status === 'Pending' ? null : expiryStr,
-        created_at: istAt(startStr, randInt(10, 20), randInt(0, 59)).toISOString(),
+        created_at: iso(istAt(startStr, randInt(10, 20), randInt(0, 59))),
       });
     }
   });
@@ -491,7 +527,10 @@ export function buildDemoData(now = new Date()) {
   for (let back = HISTORY_DAYS; back >= 1; back -= 1) {
     const dateStr = shiftDateStr(todayStr, -back);
     const weekend = isWeekendDate(dateStr);
-    const sessionCount = weekend ? randInt(9, 14) : randInt(4, 9);
+    const factor = volumeFactor(back);
+
+    const baseCount = weekend ? randInt(9, 14) : randInt(4, 9);
+    const sessionCount = Math.max(1, Math.round(baseCount * factor));
 
     const daysSessions = [];
     for (let s = 1; s <= sessionCount; s += 1) {
@@ -501,9 +540,11 @@ export function buildDemoData(now = new Date()) {
     }
 
     // Roughly 55% of sessions add food, plus a few walk-up counter sales.
+    // Attach rate tapers with volume on the older, quieter days.
+    const attachRate = 0.55 * (0.7 + 0.3 * factor);
     daysSessions.forEach((session) => {
-      if (!chance(0.55)) return;
-      const items = chance(0.3) ? 2 : 1;
+      if (!chance(attachRate)) return;
+      const items = chance(0.3 * factor) ? 2 : 1;
       for (let k = 0; k < items; k += 1) {
         cafeOrders.push(buildCafeOrder({
           dateStr, seq: orderSeq++, product: pick(products), session, status: 'Collected', now,
@@ -511,7 +552,7 @@ export function buildDemoData(now = new Date()) {
       }
     });
 
-    const counterSales = weekend ? randInt(2, 5) : randInt(1, 3);
+    const counterSales = Math.round((weekend ? randInt(2, 5) : randInt(1, 3)) * factor);
     for (let c = 0; c < counterSales; c += 1) {
       cafeOrders.push(buildCafeOrder({
         dateStr, seq: orderSeq++, product: pick(products), session: null, status: 'Collected', now,
@@ -529,9 +570,9 @@ export function buildDemoData(now = new Date()) {
     // Keep these strictly in the past relative to `now`.
     const end = new Date(now.getTime() - randInt(40, 260) * 60000);
     const start = new Date(end.getTime() - row.planned_duration * 60000);
-    row.start_time = start.toISOString();
-    row.created_at = start.toISOString();
-    row.actual_end_time = end.toISOString();
+    row.start_time = iso(start);
+    row.created_at = iso(start);
+    row.actual_end_time = iso(end);
     earlierToday.push(row);
     walkinSessions.push(row);
   }
